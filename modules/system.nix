@@ -1,15 +1,4 @@
 {pkgs, ...}: {
-  nix = {
-    settings = {
-      auto-optimise-store = true;
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      substituters = ["https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"];
-    };
-  };
-
   environment.systemPackages = with pkgs; [
     wget
     git
