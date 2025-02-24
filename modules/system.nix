@@ -6,10 +6,10 @@
         "nix-command"
         "flakes"
       ];
+      substituters = [
+        "https://mirrors.ustc.edu.cn/nix-channels/store"
+      ];
     };
-    substituters = [
-      "https://mirrors.ustc.edu.cn/nix-channels/store"
-    ];
   };
 
   environment.systemPackages = with pkgs; [

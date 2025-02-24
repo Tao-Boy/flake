@@ -20,7 +20,7 @@
     };
 
     hyprland = {
-      url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?submodules=1&shallow=1";
+      url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?ref=main&submodules=1&shallow=1";
     };
 
     # hyprspace = {
