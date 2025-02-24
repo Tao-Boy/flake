@@ -30,5 +30,6 @@
     ];
     shell = pkgs.zsh;
   };
+  programs.zsh.enable = true;
   nix.settings.allowed-users = ["${username}"];
 }
