@@ -6,6 +6,7 @@
   imports = [
     ./bootloader.nix
     ./hardware.nix
+    ./network.nix
     ./pipewire.nix
     ./system.nix
     ./user.nix
