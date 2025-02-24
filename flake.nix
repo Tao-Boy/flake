@@ -1,19 +1,14 @@
 {
   description = "Tao-Boy's NixOS configuration";
 
-  nix = {
-    settings = {
-      auto-optimise-store = true;
-      experimental-features = [
-        "nix-command"
-        "flakes"
-      ];
-      substituters = [
-        "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
-        "https://hyprland.cachix.org"
-      ];
-      trusted-public-keys = ["hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="];
-    };
+  nixConfig = {
+    extra-substituters = [
+      "https://hyprland.cachix.org"
+      "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
+    ];
+    extra-trusted-public-keys = [
+      "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
+    ];
   };
 
   inputs = {
