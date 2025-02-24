@@ -28,7 +28,7 @@
       "networkmanager"
       "wheel"
     ];
-    shell = pkgs.nushell;
+    shell = pkgs.zsh;
   };
   nix.settings.allowed-users = ["${username}"];
 }

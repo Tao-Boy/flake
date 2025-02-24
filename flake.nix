@@ -19,9 +19,9 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    hyprland = {
-      url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?ref=main&submodules=1&shallow=1";
-    };
+    # hyprland = {
+    #   url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?ref=main&submodules=1&shallow=1";
+    # };
 
     # hyprspace = {
     #   url = "git+https://gh.hitaoboy.top/github.com/KZDKM/Hyprspace?shallow=1";
