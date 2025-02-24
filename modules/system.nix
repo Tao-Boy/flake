@@ -7,6 +7,9 @@
         "flakes"
       ];
     };
+    substituters = [
+      "https://mirrors.ustc.edu.cn/nix-channels/store"
+    ];
   };
 
   environment.systemPackages = with pkgs; [

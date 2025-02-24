@@ -4,7 +4,6 @@
   nixConfig = {
     extra-substituters = [
       "https://hyprland.cachix.org"
-      "https://mirrors.tuna.tsinghua.edu.cn/nix-channels/store"
     ];
     extra-trusted-public-keys = [
       "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
@@ -21,7 +20,7 @@
     };
 
     hyprland = {
-      url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?ref=main&submodules=1&shallow=1";
+      url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?submodules=1&shallow=1";
     };
 
     # hyprspace = {
