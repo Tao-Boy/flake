@@ -1,4 +1,6 @@
-{
+let
+  gh-proxy = url: "git+https://gh.hitaoboy.top/github.com/" + url;
+in {
   description = "Tao-Boy's NixOS configuration";
 
   nixConfig = {
@@ -11,17 +13,25 @@
   };
 
   inputs = {
-    nixpkgs.url = "git+https://gh.hitaoboy.top/github.com/NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
-    nixos-hardware.url = "git+https://gh.hitaoboy.top/github.com/nixos/nixos-hardware?ref=master&shallow=1";
+    nixpkgs.url = gh-proxy "NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
+    nixos-hardware.url = gh-proxy "nixos/nixos-hardware?ref=master&shallow=1";
 
     home-manager = {
-      url = "git+https://gh.hitaoboy.top/github.com/nix-community/home-manager?ref=master&shallow=1";
+      url = gh-proxy "nix-community/home-manager?ref=master&shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    # hyprland = {
-    #   url = "git+https://gh.hitaoboy.top/github.com/hyprwm/Hyprland?ref=main&submodules=1&shallow=1";
-    # };
+    disko = {
+      url = gh-proxy "nix-community/disko?ref=master&shallow=1";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+
+    hyprland = {
+      type = "git";
+      url = "https://gh.hitaoboy.top/github.com/hyprwm/Hyprland";
+      submodules = true;
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
 
     # hyprspace = {
     #   url = "git+https://gh.hitaoboy.top/github.com/KZDKM/Hyprspace?shallow=1";
