@@ -1,14 +1,14 @@
 {
   description = "Tao-Boy's NixOS configuration";
 
-  nixConfig = {
-    extra-substituters = [
-      "https://hyprland.cachix.org"
-    ];
-    extra-trusted-public-keys = [
-      "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
-    ];
-  };
+  # nixConfig = {
+  #   extra-substituters = [
+  #     "https://hyprland.cachix.org"
+  #   ];
+  #   extra-trusted-public-keys = [
+  #     "hyprland.cachix.org-1:a7pgxzMz7+chwVL3/pzj6jIBMioiJM7ypFP8PwtkuGc="
+  #   ];
+  # };
 
   inputs = {
     nixpkgs.url = "git+https://gh.hitaoboy.top/github.com/NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
@@ -21,13 +21,6 @@
 
     disko = {
       url = "git+https://gh.hitaoboy.top/github.com/nix-community/disko?ref=master&shallow=1";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
-
-    hyprland = {
-      type = "git";
-      url = "https://gh.hitaoboy.top/github.com/hyprwm/Hyprland";
-      submodules = true;
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
@@ -44,10 +37,15 @@
   } @ inputs: let
     username = "tau";
     system = "x86_64-linux";
+    pkgs = import nixpkgs {
+      inherit system;
+      config.allowUnfree = true;
+    };
+    lib = nixpkgs.lib;
   in {
     nixosConfigurations = {
       pixelbook = nixpkgs.lib.nixosSystem {
-        inherit system;
+        inherit system pkgs lib;
         modules = [./hosts/pixelbook];
         specialArgs = {
           host = "pixelbook";

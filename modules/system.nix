@@ -19,6 +19,7 @@
   environment.systemPackages = with pkgs; [
     wget
     git
+    fastfetch
     neovim
     kitty
   ];
