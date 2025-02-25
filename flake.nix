@@ -10,18 +10,17 @@
     ];
   };
 
-  inputs = rec {
-    gh-proxy = url: "git+https://gh.hitaoboy.top/github.com/" + url;
-    nixpkgs.url = gh-proxy "NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
-    nixos-hardware.url = gh-proxy "nixos/nixos-hardware?ref=master&shallow=1";
+  inputs = {
+    nixpkgs.url = "git+https://gh.hitaoboy.top/github.com/NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
+    nixos-hardware.url = "git+https://gh.hitaoboy.top/github.com/nixos/nixos-hardware?ref=master&shallow=1";
 
     home-manager = {
-      url = gh-proxy "nix-community/home-manager?ref=master&shallow=1";
+      url = "git+https://gh.hitaoboy.top/github.com/nix-community/home-manager?ref=master&shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     disko = {
-      url = gh-proxy "nix-community/disko?ref=master&shallow=1";
+      url = "git+https://gh.hitaoboy.top/github.com/nix-community/disko?ref=master&shallow=1";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
