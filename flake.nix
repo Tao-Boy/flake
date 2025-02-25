@@ -1,6 +1,4 @@
-let
-  gh-proxy = url: "git+https://gh.hitaoboy.top/github.com/" + url;
-in {
+{
   description = "Tao-Boy's NixOS configuration";
 
   nixConfig = {
@@ -12,7 +10,8 @@ in {
     ];
   };
 
-  inputs = {
+  inputs = rec {
+    gh-proxy = url: "git+https://gh.hitaoboy.top/github.com/" + url;
     nixpkgs.url = gh-proxy "NixOS/nixpkgs?ref=nixos-unstable&shallow=1";
     nixos-hardware.url = gh-proxy "nixos/nixos-hardware?ref=master&shallow=1";
 
