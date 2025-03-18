@@ -1,0 +1,10 @@
+configuration {
+    show-icons: true;
+    terminal: "kitty";
+    display-drun: "Applications";
+    display-window: "Windows";
+    drun-display-format: "{icon} {name}";
+    window-format: "{icon} {window}";
+}
+
+@theme "theme"
