@@ -1,5 +1,4 @@
-{ ... }:
-{
+{ ... }: {
   imports = [
     ./hardware-configuration.nix
     ./disk-config.nix
@@ -9,11 +8,12 @@
     ../../modules/cli/packages.nix
     ../../modules/cli/user.nix
     ../../modules/cli/zram.nix
+    ../../home/gui/zathura.nix
     ../../home
   ];
   services.openssh = {
     enable = true;
-    ports = [ 22 ];
+    ports = [ 2333 ];
     settings = {
       PasswordAuthentication = true;
       PermitRootLogin = "no";
