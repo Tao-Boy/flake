@@ -1,22 +1,22 @@
 {
   description = "Tao-Boy's NixOS configuration";
   inputs = {
-    nixpkgs.url = "git+https://github.com/NixOS/nixpkgs?shallow=1&ref=nixpkgs-unstable";
+    nixpkgs.url = "https://gh-proxy.com/github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz";
 
-    nixos-hardware.url = "git+https://github.com/NixOS/nixos-hardware?shallow=1&ref=master";
+    nixos-hardware.url = "https://gh-proxy.com/github.com/NixOS/nixos-hardware/archive/master.tar.gz";
 
     home-manager = {
-      url = "git+https://github.com/nix-community/home-manager?shallow=1&ref=master";
+      url = "https://gh-proxy.com/github.com/nix-community/home-manager/archive/master.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     disko = {
-      url = "git+https://github.com/nix-community/disko?shallow=1&tag=v1.12.0";
+      url = "https://gh-proxy.com/github.com/nix-community/disko/archive/1.12.0.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     impermanence = {
-      url = "git+https://github.com/nix-community/impermanence?shallow=1&ref=master";
+      url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
