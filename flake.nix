@@ -24,12 +24,10 @@
     {
       nixpkgs,
       self,
-      emacs-overlay,
       ...
     }@inputs:
     let
       username = "tau";
-      nixpkgs.overlays = [ emacs-overlay.overlays.default ]
       system = "x86_64-linux";
       pkgs = import nixpkgs { 
         inherit system;
