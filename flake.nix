@@ -11,7 +11,7 @@
     };
 
     disko = {
-      url = "https://gh-proxy.com/github.com/nix-community/disko/archive/1.12.0.tar.gz";
+      url = "https://gh-proxy.com/github.com/nix-community/disko/archive/v1.12.0.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
