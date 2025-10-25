@@ -10,8 +10,6 @@
     gcc
     ripgrep
     gnumake
-
-    emacs-nox
   ];
   environment.variables.EDITOR = "nvim";
 }

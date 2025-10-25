@@ -9,5 +9,6 @@
     ./xdg.nix
     ./zathura.nix
     ./env.nix
+    ./emacs.nix
   ];
 }
