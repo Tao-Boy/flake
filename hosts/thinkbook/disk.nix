@@ -1,5 +1,4 @@
-{lib, inputs, ... }:{
-
+{
   disko.devices = {
     nodev."/" = {
       fsType = "tmpfs";
