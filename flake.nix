@@ -31,6 +31,10 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { 
         inherit system;
+        overlays = [
+          inputs.emacs-overlay.overlays.default
+          (import ./overlays)
+        ]
     };
       lib = nixpkgs.lib;
     in
@@ -40,7 +44,6 @@
           inherit system;
           modules = [
             ./hosts/thinkbook
-            (import ./overlays)
           ];
           specialArgs = {
             host = "thinkbook";
