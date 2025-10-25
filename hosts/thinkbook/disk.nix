@@ -34,7 +34,6 @@
                 type = "filesystem";
                 format = "ext4";
                 mountpoint = "/nix";
-                mountOptions = ["compress=zstd"];
               };
             };
           };
