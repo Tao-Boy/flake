@@ -1,5 +1,5 @@
 {pkgs, ...}: let
-  LxgwWenKai = pkgs.callPackage ../../pkgs/LxgwWenKai.nix {};
+  #LxgwWenKai = pkgs.callPackage ../../pkgs/LxgwWenKai.nix {};
 in {
   home.packages = with pkgs; [
     noto-fonts-emoji
@@ -8,7 +8,7 @@ in {
     source-han-sans
     source-han-serif
     nerd-fonts.jetbrains-mono
-    LxgwWenKai
+    #LxgwWenKai
   ];
 
   fonts.fontconfig.enable = true;

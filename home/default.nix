@@ -17,7 +17,7 @@
         if (host != "vps")
         then [
           ./cli
-          #./gui
+          ./gui
         ]
         else [./cli];
       home.username = "${username}";
