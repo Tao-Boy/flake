@@ -11,7 +11,7 @@
     };
 
     disko = {
-      url = "git+https://github.com/nix-community/disko?shallow=1&ref=v1.12.0";
+      url = "git+https://github.com/nix-community/disko?shallow=1&tag=v1.12.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
