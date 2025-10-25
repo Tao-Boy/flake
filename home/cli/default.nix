@@ -7,6 +7,5 @@
     ./starship.nix
     ./yazi.nix
     ./zsh.nix
-    ./musicfox.nix
   ];
 }

@@ -15,10 +15,8 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    impermanence = {
-      url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    impermanence.url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
+  
   };
 
   outputs =
