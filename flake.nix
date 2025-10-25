@@ -15,7 +15,7 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    emacs-overlay.url = "https://gh-proxy.com/github.com/emacs-community/emacs-overlay/archive/master.tar.gz";
+    emacs-overlay.url = "https://gh-proxy.com/github.com/nix-community/emacs-overlay/archive/master.tar.gz";
     impermanence.url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
   
   };
