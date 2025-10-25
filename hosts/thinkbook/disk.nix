@@ -1,8 +1,5 @@
 {lib, inputs, ... }:{
 
-  imports = [
-    inputs.disko.nixosModules.disko
-  ];
   disko.devices = {
     nodev."/" = {
       fsType = "tmpfs";
