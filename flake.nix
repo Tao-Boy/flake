@@ -1,22 +1,22 @@
 {
   description = "Tao-Boy's NixOS configuration";
   inputs = {
-    nixpkgs.url = "git+https://github.com/NixOS/nixpkgs.git?shallow=1&ref=nixpkgs-unstable";
+    nixpkgs.url = "git+https://github.com/NixOS/nixpkgs?shallow=1&ref=nixpkgs-unstable";
 
-    nixos-hardware.url = "git+https://github.com/NixOS/nixos-hardware.git?shallow=1&ref=master";
+    nixos-hardware.url = "git+https://github.com/NixOS/nixos-hardware?shallow=1&ref=master";
 
     home-manager = {
-      url = "git+https://github.com/nix-community/home-manager.git?shallow=1&ref=master";
+      url = "git+https://github.com/nix-community/home-manager?shallow=1&ref=master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     disko = {
-      url = "git+https://github.com/nix-community/disko.git?shallow=1&ref=v1.12.0";
+      url = "git+https://github.com/nix-community/disko?shallow=1&ref=v1.12.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     impermanence = {
-      url = "git+https://github.com/nix-community/impermanence.git?shallow=1&ref=master";
+      url = "git+https://github.com/nix-community/impermanence?shallow=1&ref=master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -38,7 +38,7 @@
         thinkbook = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            ./hosts/thinkbook.nix
+            ./hosts/thinkbook
             (import ./overlays)
           ];
           specialArgs = {
@@ -47,4 +47,5 @@
           };
         };
       };
+}
 }

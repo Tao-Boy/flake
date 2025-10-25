@@ -1,7 +1,6 @@
 {...}: {
   imports = [
     ./neovim
-    ./secrets
     ./btop.nix
     ./fastfetch.nix
     ./git.nix
