@@ -4,6 +4,6 @@
     inputs.disko.nixosModules.disko
     ./disk.nix
     ../../modules
-    ../../home
+    #../../home
   ];
 }
