@@ -29,7 +29,13 @@
     let
       username = "tau";
       system = "x86_64-linux";
-      pkgs = import nixpkgs { inherit system; };
+      pkgs = import nixpkgs { 
+        inherit system;
+        overlays = [
+          (import inputs.emacs-overlay)
+          (import ./overlays)
+        ];
+    };
       lib = nixpkgs.lib;
     in
     {
@@ -38,7 +44,6 @@
           inherit system;
           modules = [
             ./hosts/thinkbook
-            (import ./overlays)
           ];
           specialArgs = {
             host = "thinkbook";
