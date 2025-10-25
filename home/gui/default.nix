@@ -1,6 +1,6 @@
 {...}: {
   imports = [
-    ./browser.nix
+    #./browser.nix
     ./Niri
     ./kitty.nix
     ./gtk.nix
