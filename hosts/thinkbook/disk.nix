@@ -1,9 +1,22 @@
-{
+{lib, inputs, ... }:{
+
+  imports = [
+    inputs.disko.nixosModules.disko
+  ];
   disko.devices = {
+    nodev."/" = {
+      fsType = "tmpfs";
+      mountOptions = [
+        "size=30%"
+        "defaults"
+        "mode=755"
+      ];
+    };
+
     disk = {
       main = {
         type = "disk";
-        device = "/dev/nvme1n1";
+        device = "/dev/nvme2n1";
         content = {
           type = "gpt";
           partitions = {
@@ -22,24 +35,10 @@
             root = {
               size = "100%";
               content = {
-                type = "btrfs";
-                extraArgs = ["-f"]; # Override existing partition
-                subvolumes = {
-                  "@" = {
-                    mountpoint = "/";
-                  };
-                  "@home" = {
-                    mountOptions = ["compress=zstd"];
-                    mountpoint = "/home";
-                  };
-                  "@nix" = {
-                    mountOptions = [
-                      "compress=zstd"
-                      "noatime"
-                    ];
-                    mountpoint = "/nix";
-                  };
-                };
+                type = "filesystem";
+                format = "ext4";
+                mountpoint = "/nix";
+                mountOptions = ["compress=zstd"];
               };
             };
           };

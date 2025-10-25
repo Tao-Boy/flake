@@ -1,29 +1,22 @@
 {
   description = "Tao-Boy's NixOS configuration";
   inputs = {
-    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+    nixpkgs.url = "git+https://github.com/NixOS/nixpkgs.git?shallow=1&ref=nixpkgs-unstable";
 
-    nixos-hardware.url = "github:NixOS/nixos-hardware/master";
-
-    nixos-wsl = {
-      url = "github:nix-community/NixOS-WSL";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    nixos-hardware.url = "git+https://github.com/NixOS/nixos-hardware.git?shallow=1&ref=master";
 
     home-manager = {
-      url = "github:nix-community/home-manager/master";
+      url = "git+https://github.com/nix-community/home-manager.git?shallow=1&ref=master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
     disko = {
-      url = "github:nix-community/disko/v1.12.0";
+      url = "git+https://github.com/nix-community/disko.git?shallow=1&ref=v1.12.0";
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    impermanence.url = "github:nix-community/impermanence";
-
-    sops-nix = {
-      url = "github:Mic92/sops-nix";
+    impermanence = {
+      url = "git+https://github.com/nix-community/impermanence.git?shallow=1&ref=master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -42,37 +35,16 @@
     in
     {
       nixosConfigurations = {
-        pixelbook = nixpkgs.lib.nixosSystem {
+        thinkbook = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            ./hosts/pixelbook
+            ./hosts/thinkbook.nix
             (import ./overlays)
           ];
           specialArgs = {
-            host = "pixelbook";
-            inherit inputs username;
-          };
-        };
-        wsl = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./hosts/wsl
-          ];
-          specialArgs = {
-            host = "wsl";
-            inherit inputs username;
-          };
-        };
-        vps = nixpkgs.lib.nixosSystem {
-          inherit system;
-          modules = [
-            ./hosts/vps
-          ];
-          specialArgs = {
-            host = "vps";
+            host = "thinkbook";
             inherit inputs username;
           };
         };
       };
-    };
 }
