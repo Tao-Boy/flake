@@ -13,10 +13,10 @@
   programs.git = {
     enable = true;
 
-    userName = username;
-    userEmail = "taoboy03@qq.com";
+    settings.user.name = username;
+    settings.user.email = "taoboy03@qq.com";
 
-    extraConfig = {
+    settings = {
       init.defaultBranch = "main";
       push.autoSetupRemote = true;
       pull.rebase = true;
