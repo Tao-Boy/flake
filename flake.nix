@@ -33,15 +33,14 @@
         inherit system;
         overlays = [
           inputs.emacs-overlay.overlays.default
-          (import ./overlays)
-        ]
+        ];
     };
       lib = nixpkgs.lib;
     in
     {
       nixosConfigurations = {
         thinkbook = nixpkgs.lib.nixosSystem {
-          inherit system;
+          inherit system pkgs;
           modules = [
             ./hosts/thinkbook
           ];
