@@ -2,14 +2,14 @@
   description = "Tao-Boy's NixOS configuration";
   inputs = {
     nixpkgs.url = "https://gh-proxy.com/github.com/NixOS/nixpkgs/archive/nixpkgs-unstable.tar.gz";
-
+    
     nixos-hardware.url = "https://gh-proxy.com/github.com/NixOS/nixos-hardware/archive/master.tar.gz";
-
+    
     home-manager = {
       url = "https://gh-proxy.com/github.com/nix-community/home-manager/archive/master.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-
+    
     disko = {
       url = "https://gh-proxy.com/github.com/nix-community/disko/archive/v1.12.0.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -24,6 +24,7 @@
     {
       nixpkgs,
       self,
+      emacs-overlay,
       ...
     }@inputs:
     let
@@ -31,14 +32,15 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { 
         inherit system;
-    };
+      };
       lib = nixpkgs.lib;
     in
-    {
+      {
       nixosConfigurations = {
         thinkbook = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
+            (import ./overlays) // emacs-overlay.overlays.default
             ./hosts/thinkbook
           ];
           specialArgs = {
@@ -47,5 +49,5 @@
           };
         };
       };
-};
+     };
 }
