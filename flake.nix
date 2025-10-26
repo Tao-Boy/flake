@@ -31,16 +31,13 @@
       system = "x86_64-linux";
       pkgs = import nixpkgs { 
         inherit system;
-        overlays = [
-          inputs.emacs-overlay.overlays.default
-        ];
     };
       lib = nixpkgs.lib;
     in
     {
       nixosConfigurations = {
         thinkbook = nixpkgs.lib.nixosSystem {
-          inherit system pkgs;
+          inherit system;
           modules = [
             ./hosts/thinkbook
           ];
