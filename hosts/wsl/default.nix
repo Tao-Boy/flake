@@ -18,6 +18,14 @@
   wsl.enable = true;
   wsl.defaultUser = "${username}";
 
+  services.openssh = {
+    enable = true;
+    ports = [ 2333 ];
+    settings = {
+      PasswordAuthentication = true;
+      PermitRootLogin = "no";
+    };
+  };
   home-manager = {
     useUserPackages = true;
     useGlobalPkgs = true;
