@@ -34,6 +34,7 @@
         ../../home/cli/zsh.nix
         #gui
         ../../home/gui/zathura.nix
+        ../../home/gui/emacs.nix
       ];
       home.username = "${username}";
       home.homeDirectory = "/home/${username}";
