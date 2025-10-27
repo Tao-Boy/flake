@@ -15,9 +15,18 @@
       inputs.nixpkgs.follows = "nixpkgs";
     };
 
-    emacs-overlay.url = "https://gh-proxy.com/github.com/nix-community/emacs-overlay/archive/master.tar.gz";
-    impermanence.url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
-  
+    emacs-overlay = {
+      url = "https://gh-proxy.com/github.com/nix-community/emacs-overlay/archive/master.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    impermanence = {
+      url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+  nixos-wsl = {
+    url = "https://gh-proxy.com/github.com/nix-community/NixOS-WSL/archive/main.tar.gz";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
   };
 
   outputs =
@@ -37,14 +46,17 @@
     in
       {
       nixosConfigurations = {
-        thinkbook = nixpkgs.lib.nixosSystem {
+        nix-wsl = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
-            (import ./overlays) // emacs-overlay.overlays.default
-            ./hosts/thinkbook
+            {nixpkgs.overlays = [
+                emacs-overlay.overlays.default
+              ];
+            }
+            ./hosts/wsl
           ];
           specialArgs = {
-            host = "thinkbook";
+            host = "nix-wsl";
             inherit inputs username;
           };
         };

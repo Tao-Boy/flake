@@ -26,7 +26,6 @@
       imports = [
         #cli
         ../../home/cli/neovim
-        ../../home/cli/secrets
         ../../home/cli/btop.nix
         ../../home/cli/fastfetch.nix
         ../../home/cli/git.nix
