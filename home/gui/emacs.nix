@@ -4,6 +4,6 @@
   ...
 }: {
   home.packages = with pkgs; [
-    emacs-git-pgtk
+    emacs-git
   ];
 }
