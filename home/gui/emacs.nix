@@ -1,6 +1,6 @@
 {
   pkgs,
-  inputs
+  inputs,
   ...
 }: {
   home.packages = with pkgs; [
