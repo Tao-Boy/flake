@@ -19,10 +19,8 @@
       url = "https://gh-proxy.com/github.com/nix-community/emacs-overlay/archive/master.tar.gz";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    impermanence = {
-      url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
-      inputs.nixpkgs.follows = "nixpkgs";
-    };
+    impermanence.url = "https://gh-proxy.com/github.com/nix-community/impermanence/archive/master.tar.gz";
+  
   nixos-wsl = {
     url = "https://gh-proxy.com/github.com/nix-community/NixOS-WSL/archive/main.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
