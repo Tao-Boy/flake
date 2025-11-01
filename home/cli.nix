@@ -59,11 +59,11 @@
       init.defaultBranch = "main";
       push.autoSetupRemote = true;
       pull.rebase = true;
-    };
 
-    extraConfig = {
-      "url.https://gh-proxy.com/github.com/:" = {
+      url = {
+        "https://gh-proxy.com/github.com/" = {
         insteadOf = "https://github.com/";
+      };
       };
     };
   };
