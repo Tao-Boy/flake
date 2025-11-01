@@ -2,7 +2,6 @@
   #LxgwWenKai = pkgs.callPackage ../../pkgs/LxgwWenKai.nix {};
 in {
   home.packages = with pkgs; [
-    noto-fonts-emoji
     source-sans
     source-serif
     source-han-sans

@@ -1,4 +1,4 @@
-{pkgs, ...}: {
+{pkgs,inputs,username,lib, ...}: {
     programs = {
     neovim = {
       enable = true;

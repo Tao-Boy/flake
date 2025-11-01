@@ -4,6 +4,8 @@
     ./fuzzel.nix
     ./swaybg.nix
   ];
-  programs.niri.package = pkgs.niri-unstable;
-
+  programs.niri = {
+    enable = true;
+    package = pkgs.niri
+  };
 }

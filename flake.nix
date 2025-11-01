@@ -33,7 +33,7 @@
     url = "https://gh-proxy.com/github.com/sodiboo/niri-flake/archive/main.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
   };
-  }
+  };
 
   outputs =
     {
@@ -62,6 +62,7 @@
             ./hosts/thinkbook
           ];
           specialArgs = {
+            inherit inputs username;
             host = "thinkbook";
           };
         };
