@@ -25,7 +25,15 @@
     url = "https://gh-proxy.com/github.com/nix-community/NixOS-WSL/archive/main.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
   };
+  zen-browser = {
+    url = "https://gh-proxy.com/github.com/0xc000022070/zen-browser-flake/archive/beta.tar.gz";
+    inputs.nixpkgs.follows = "nixpkgs";
   };
+  niri = {
+    url = "https://gh-proxy.com/github.com/sodiboo/niri-flake/archive/main.tar.gz";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+  }
 
   outputs =
     {
@@ -44,18 +52,17 @@
     in
       {
       nixosConfigurations = {
-        nix-wsl = nixpkgs.lib.nixosSystem {
+        thinkbook = nixpkgs.lib.nixosSystem {
           inherit system;
           modules = [
             {nixpkgs.overlays = [
                 emacs-overlay.overlays.default
               ];
             }
-            ./hosts/wsl
+            ./hosts/thinkbook
           ];
           specialArgs = {
-            host = "nix-wsl";
-            inherit inputs username;
+            host = "thinkbook";
           };
         };
       };

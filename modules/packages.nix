@@ -11,5 +11,4 @@
     ripgrep
     gnumake
   ];
-  environment.variables.EDITOR = "nvim";
 }

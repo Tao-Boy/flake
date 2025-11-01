@@ -13,13 +13,11 @@
     useGlobalPkgs = true;
     extraSpecialArgs = {inherit inputs username host;};
     users.${username} = {
-      imports =
-        if (host != "vps")
-        then [
-          ./cli
+      imports = [
+          ./cli.nix
           ./gui
-        ]
-        else [./cli];
+          ./home-packages.nix
+        ];
       home.username = "${username}";
       home.homeDirectory = "/home/${username}";
       home.stateVersion = "25.05";

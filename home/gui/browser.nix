@@ -3,7 +3,6 @@
   inputs,
   ...
 }: {
-  home.packages = with pkgs; [
-    google-chrome
-  ];
+  imports = [inputs.zen-browser.homeModules.beta];
+  programs.zen-browser.enable = true;
 }

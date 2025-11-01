@@ -1,10 +1,14 @@
 {host, ...}: {
   imports = [
-    ./cli
-    (
-      if host != "vps"
-      then ./gui
-      else []
-    )
+    ./bootloader.nix
+    ./i18n.nix
+    ./networking.nix
+    ./nix.nix
+    ./packages.nix
+    ./user.nix
+    ./zram.nix
+    ./impermanence.nix
+    ./audio.nix
+    ./wayland.nix
   ];
 }
