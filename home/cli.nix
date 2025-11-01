@@ -1,8 +1,6 @@
 {pkgs,inputs,username,lib,config, ...}: {
 
-    dconf.enable = true;
-
-    programs = {
+   programs = {
     neovim = {
       enable = true;
       viAlias = true;

@@ -1,5 +1,6 @@
 {pkgs,...}:{
     home.packages = with pkgs; [
+    dconf
     #language servers
     texlab
     pyright
