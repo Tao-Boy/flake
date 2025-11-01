@@ -50,14 +50,16 @@
   programs.git = {
     enable = true;
 
-    settings.user.name = username;
-    settings.user.email = "taoboy03@qq.com";
-
     settings = {
+      user = {
+        name = username;
+        email = "taoboy03@qq.com";
+      };
       init.defaultBranch = "main";
       push.autoSetupRemote = true;
       pull.rebase = true;
     };
+
     extraConfig = {
       "url.https://gh-proxy.com/github.com/:" = {
         insteadOf = "https://github.com/";
