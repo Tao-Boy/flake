@@ -9,6 +9,5 @@
     ./zram.nix
     ./impermanence.nix
     ./audio.nix
-    ./wayland.nix
   ];
 }
