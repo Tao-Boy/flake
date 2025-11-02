@@ -33,6 +33,15 @@
     url = "https://gh-proxy.com/github.com/sodiboo/niri-flake/archive/main.tar.gz";
     inputs.nixpkgs.follows = "nixpkgs";
   };
+  quickshell = {
+      url = "https://gh-proxy.com/github.com/outfoxxed/quickshell/archive/master.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
+    noctalia = {
+      url = "https://gh-proxy.com/github.com/noctalia-dev/noctalia-shell/archive/main.tar.gz";
+      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.quickshell.follows = "quickshell";
+    };
   };
 
   outputs =
