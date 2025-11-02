@@ -69,5 +69,4 @@
       # but in this case must include *all* settings.
     };
   };
-
-}
+};
