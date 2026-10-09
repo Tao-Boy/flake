@@ -68,11 +68,6 @@
           shellcheck ${./scripts/vps.sh}
           touch $out
         '';
-        # Force evaluation of all host toplevels without building each closure.
-        evaluation = pkgs.writeText "host-derivations.json" (builtins.toJSON (
-          lib.mapAttrs (_: host: host.config.system.build.toplevel.drvPath)
-            self.nixosConfigurations
-        ));
         policy =
           let c = self.nixosConfigurations.vps.config;
           in assert c.services.openssh.settings.PasswordAuthentication == false;

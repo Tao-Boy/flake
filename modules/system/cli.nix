@@ -3,11 +3,11 @@
   config = lib.mkIf config.fleet.enable {
     environment.systemPackages = with pkgs; [
       # Editing, source control and structured data.
-      neovim git curl wget jq yq-go
+      git curl wget jq yq-go
       # File navigation, search and archives.
       ripgrep fd fzf bat eza tree less rsync unzip zip gnutar gzip xz zstd
       # Process, storage and network diagnostics.
-      htop btop tmux ncdu lsof file strace sysstat
+      htop btop ncdu lsof file strace sysstat
       iproute2 iputils dnsutils mtr tcpdump nmap socat ethtool
       # System administration.
       openssh sudo pciutils usbutils util-linux nixos-rebuild
