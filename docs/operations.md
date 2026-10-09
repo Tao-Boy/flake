@@ -80,7 +80,8 @@ sudo fstrim -av
 
 GitHub Actions 在 x86_64 Linux 上执行：
 
-- 所有 flake 输出与 NixOS assertions 的评估。
+- 在尚未填写公钥的模板上，先验证空公钥拒绝行为，再仅在 CI 临时工作区注入一次性测试公钥。
+- 所有 flake 输出与 NixOS assertions 的评估，保留防止管理员锁定的系统断言。
 - ShellCheck 与部署工具构建。
 - 命令帮助及空 SSH 公钥拒绝检查。
 - VPS system toplevel 与 diskoScript 的实际构建。

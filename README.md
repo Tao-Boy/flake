@@ -100,6 +100,6 @@ nix run .#rebuild -- vps ops@<VPS地址> --action switch
 - [可选服务](docs/services.md)：Nginx/ACME、Podman 与密钥管理。
 - [日常运维](docs/operations.md)：升级、回滚、日志、空间与故障恢复。
 
-`nix flake check` 可以评估尚未填写公钥的模板，方便 CI 构建；部署脚本会独立检查有效公钥。不要绕过预检，在空公钥状态下直接调用安装器。
+默认空公钥状态下，NixOS 的防锁定断言会阻止系统构建；部署脚本也会提前拒绝。CI 仅在临时工作区注入一次性测试公钥进行构建，测试密钥不会提交到仓库。使用前必须填写自己的公钥。
 
 MIT License。

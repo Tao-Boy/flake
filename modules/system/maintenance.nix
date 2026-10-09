@@ -14,9 +14,9 @@
       RuntimeMaxUse=64M
       MaxRetentionSec=14day
     '';
-    systemd.coredump.extraConfig = ''
-      Storage=none
-      ProcessSizeMax=0
-    '';
+    systemd.coredump.settings.Coredump = {
+      Storage = "none";
+      ProcessSizeMax = 0;
+    };
   };
 }

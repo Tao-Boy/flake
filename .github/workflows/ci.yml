@@ -19,8 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
-      - name: Evaluate every flake output and NixOS assertion
-        run: nix flake check --no-build --no-write-lock-file --show-trace
       - name: Check shell and build deployment tools
         run: |
           nix build --no-link --no-write-lock-file \
@@ -39,6 +37,26 @@ jobs:
             cat preflight.log
             rg '必须配置至少一个完整的 SSH 公钥' preflight.log
           fi
+      - name: Add an ephemeral CI-only public key if the template is unconfigured
+        run: |
+          if nix eval --json .#nixosConfigurations.vps.config.fleet.access.sshPublicKeys | jq -e 'length == 0'; then
+            mkdir -p work
+            ssh-keygen -q -t ed25519 -N "" -f work/ci-key
+            export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
+            python3 - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          path = Path("hosts/vps/default.nix")
+          source = path.read_text()
+          marker = "sshPublicKeys = [ ];"
+          assert marker in source, "Update the CI fixture when changing the empty-key template"
+          source = source.replace(marker, "sshPublicKeys = [ " + json.dumps(os.environ["CI_SSH_PUBKEY"]) + " ];", 1)
+          path.write_text(source)
+          PY
+          fi
+      - name: Evaluate every flake output and NixOS assertion
+        run: nix flake check --no-build --no-write-lock-file --show-trace
       - name: Build the VPS system and disk provisioning script
         run: |
           nix build --no-link --no-write-lock-file --print-build-logs \
