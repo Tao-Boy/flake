@@ -7,8 +7,6 @@
     "ata_piix" "ahci" "xhci_pci" "sd_mod"
     "virtio_pci" "virtio_blk" "virtio_scsi" "nvme"
   ];
-  boot.kernelModules = [ ];
-  boot.extraModulePackages = [ ];
   nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
 
   # disko is the only source of fileSystems and swapDevices.

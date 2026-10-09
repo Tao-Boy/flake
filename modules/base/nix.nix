@@ -14,5 +14,4 @@
     options = "--delete-older-than 14d";
     persistent = true;
   };
-  system.autoUpgrade.enable = lib.mkDefault false;
 }

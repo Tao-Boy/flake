@@ -86,7 +86,7 @@ nix develop
 nix fmt
 ```
 
-Home Manager 随 NixOS 一起激活。系统工具放在 `modules/base/packages.nix`，用户软件放在 `home/base/`，主机差异放在 `home/hosts/vps.nix`。无需单独执行 `home-manager switch`。
+Home Manager 随 NixOS 一起激活。额外系统工具放在 `modules/base/packages.nix`，用户软件放在 `home/base/`，主机差异放在 `home/hosts/vps.nix`。无需单独执行 `home-manager switch`。
 
 ## 文档
 

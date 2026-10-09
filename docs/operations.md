@@ -21,7 +21,7 @@ nix fmt
 shellcheck scripts/vps.sh
 ```
 
-CI 先检查部署包/脚本与空公钥拦截，再给未配置模板注入临时测试公钥。随后检查全部 flake 输出、构建用户环境并执行 nvim/git/fzf/bat/eza/rg/fd/btop，最后实际构建系统与分区脚本。临时私钥仅存在 CI runner 的工作区。
+CI 先检查部署包/脚本与空公钥拦截，再给未配置模板注入临时测试公钥。随后检查全部 flake 输出、构建用户环境并执行 nvim/git/fzf/bat/eza/rg/fd/btop，最后实际构建系统与分区脚本，确认系统中的 SSH、sudo、网络和诊断工具可用。临时私钥仅存在 CI runner 的工作区。
 
 这些检查验证配置与软件构建；实际网络、磁盘、固件和服务商限制仍需目标上的预检。CI 不连接或安装 VPS。
 

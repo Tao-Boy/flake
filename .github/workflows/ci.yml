@@ -28,21 +28,18 @@ jobs:
             .#packages.x86_64-linux.install \
             .#packages.x86_64-linux.rebuild \
             .#packages.x86_64-linux.preflight
-      - name: Verify CLI help and empty-key guard
+      - name: Verify CLI and prepare a CI-only public key when needed
         run: |
           nix run --no-write-lock-file .#install -- --help
-          if nix eval --json .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys' | jq -e 'length == 0'; then
+          mkdir -p work
+          keys=$(nix eval --json --no-write-lock-file .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys')
+          if jq -e 'length == 0' <<<"$keys"; then
             if nix run --no-write-lock-file .#preflight -- vps >preflight.log 2>&1; then
               echo "Empty SSH keys must never pass deployment preflight"
               exit 1
             fi
             cat preflight.log
             grep -F '必须配置至少一个完整的 SSH 公钥' preflight.log
-          fi
-      - name: Add an ephemeral CI-only public key if the template is unconfigured
-        run: |
-          if nix eval --json .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys' | jq -e 'length == 0'; then
-            mkdir -p work
             ssh-keygen -q -t ed25519 -N "" -f work/ci-key
             export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
             python3 - <<'PY'
@@ -66,15 +63,15 @@ jobs:
           nix build --no-write-lock-file --print-build-logs \
             --out-link work/home-activation .#checks.x86_64-linux.home
           work/home-activation/home-path/bin/nvim --headless -u NONE -i NONE '+qa'
-          work/home-activation/home-path/bin/git --version
-          work/home-activation/home-path/bin/fzf --version
-          work/home-activation/home-path/bin/bat --version
-          work/home-activation/home-path/bin/eza --version
-          work/home-activation/home-path/bin/rg --version
-          work/home-activation/home-path/bin/fd --version
-          work/home-activation/home-path/bin/btop --version
-      - name: Build the VPS system and disk provisioning script
+          for tool in git fzf bat eza rg fd btop; do
+            work/home-activation/home-path/bin/"$tool" --version
+          done
+      - name: Build the VPS system and disk script, verify system tools
         run: |
+          nix build --no-write-lock-file --print-build-logs \
+            --out-link work/system .#nixosConfigurations.vps.config.system.build.toplevel
           nix build --no-link --no-write-lock-file --print-build-logs \
-            .#nixosConfigurations.vps.config.system.build.toplevel \
             .#nixosConfigurations.vps.config.system.build.diskoScript
+          for tool in ssh sudo lsblk ip ping dig lspci lsusb nixos-rebuild; do
+            test -x "work/system/sw/bin/$tool"
+          done

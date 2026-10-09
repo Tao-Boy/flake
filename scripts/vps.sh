@@ -72,13 +72,13 @@ case "$action" in test|switch|boot|dry-activate|build) ;; *) die "不支持的�
 
 [[ -f flake.nix && -f flake.lock ]] || die "请先 cd 到克隆后的 flake 仓库根目录"
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "请在 Git 仓库中运行"
-[[ "$(nix eval --raw --no-write-lock-file \
-  ".#nixosConfigurations.${host}.config.nixpkgs.hostPlatform.system")" == x86_64-linux ]] \
-  || die "仅支持 x86_64-linux"
+configuration=".#nixosConfigurations.${host}.config"
 
 # Read only public deployment metadata from native NixOS options.
 metadata=$(nix eval --json --no-write-lock-file \
-  ".#nixosConfigurations.${host}.config" --apply 'c: {
+  "$configuration" --apply 'c: {
+    system = c.nixpkgs.hostPlatform.system;
+    authorizedKeys = builtins.mapAttrs (_: u: u.openssh.authorizedKeys.keys) c.users.users;
     admins = c.services.openssh.settings.AllowUsers;
     disks = builtins.mapAttrs (_: d: d.device) c.disko.devices.disk;
     sshPorts = c.services.openssh.ports;
@@ -94,6 +94,7 @@ metadata=$(nix eval --json --no-write-lock-file \
       }) c.systemd.network.networks;
     };
   }')
+[[ "$(jq -r '.system' <<<"$metadata")" == x86_64-linux ]] || die "仅支持 x86_64-linux"
 jq -e '.grub and (.admins | length == 1) and (.disks | length == 1)
        and (.sshPorts | length == 1) and (.efi or .bios)' \
   <<<"$metadata" >/dev/null \
@@ -106,8 +107,7 @@ boot_mode=$(jq -r 'if .efi and .bios then "hybrid" elif .efi then "uefi" else "b
 [[ "$admin" =~ ^[a-z_][a-z0-9_-]*$ && "$admin" != root ]] || die "管理员名称无效"
 [[ "$disk" =~ ^/dev/[a-zA-Z0-9_./:-]+$ ]] || die "磁盘路径包含不支持的字符"
 
-keys=$(nix eval --json --no-write-lock-file \
-  ".#nixosConfigurations.${host}.config.users.users.${admin}.openssh.authorizedKeys.keys")
+keys=$(jq --arg admin "$admin" '.authorizedKeys[$admin]' <<<"$metadata")
 jq -e 'length > 0 and all(.[]; type == "string" and (contains("\n") | not))' \
   <<<"$keys" >/dev/null || die "必须配置至少一个完整的 SSH 公钥"
 
@@ -119,10 +119,9 @@ while IFS= read -r key; do
 done < <(jq -r '.[]' <<<"$keys")
 
 # Force NixOS assertions, package references and disko script evaluation.
-nix eval --raw --no-write-lock-file \
-  ".#nixosConfigurations.${host}.config.system.build.toplevel.drvPath" >/dev/null
-nix eval --raw --no-write-lock-file \
-  ".#nixosConfigurations.${host}.config.system.build.diskoScript.drvPath" >/dev/null
+nix eval --json --no-write-lock-file "$configuration" --apply 'c: [
+  c.system.build.toplevel.drvPath c.system.build.diskoScript.drvPath
+]' >/dev/null
 
 printf '主机=%s  管理员=%s  磁盘=%s  启动=%s  安装后SSH端口=%s\n' \
   "$host" "$admin" "$disk" "$boot_mode" "$final_port"

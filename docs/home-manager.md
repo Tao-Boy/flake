@@ -12,7 +12,7 @@ NixOS 负责系统服务、账号和基础系统工具；Home Manager 负责管�
 | 当前主机的用户差异 | `home/hosts/vps.nix` |
 | Home Manager 接入与参数 | `lib/nixos-system.nix` |
 
-`modules/base/packages.nix` 保留 OpenSSH、sudo、iproute2、iputils、util-linux、DNS/硬件诊断与 nixos-rebuild。curl、jq、压缩工具、htop、ncdu、rsync、网络诊断等日常工具均在用户环境中。
+OpenSSH、sudo、iproute2、iputils、util-linux 与 nixos-rebuild 由 NixOS 自带模块提供；`modules/base/packages.nix` 只添加 DNS/硬件诊断工具。curl、jq、压缩工具、htop、ncdu、rsync、网络诊断等日常工具均在用户环境中。
 
 ## stable / unstable 的分工
 

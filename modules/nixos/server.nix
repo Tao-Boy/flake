@@ -1,8 +1,7 @@
-{ config, lib, myvars, ... }:
+{ lib, myvars, ... }:
 {
   services.qemuGuest.enable = lib.mkDefault true;
   services.chrony.enable = lib.mkDefault true;
-  services.timesyncd.enable = lib.mkDefault false;
   services.fstrim.enable = lib.mkDefault true;
   zramSwap = {
     enable = lib.mkDefault true;
@@ -24,19 +23,12 @@
     useDHCP = false;
     useNetworkd = true;
     nftables.enable = true;
-    firewall = {
-      enable = true;
-      allowedTCPPorts = config.services.openssh.ports;
-      allowPing = true;
-    };
+    firewall.enable = true;
   };
   services.resolved.enable = true;
-  systemd.network.enable = true;
 
   services.openssh = {
     enable = true;
-    openFirewall = false;
-    ports = lib.mkDefault [ 22 ];
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
