@@ -23,13 +23,15 @@ OpenSSH、sudo、iproute2、iputils、util-linux 与 nixos-rebuild 由 NixOS 自
 
 `useGlobalPkgs = true` 让 Home Manager 的 `pkgs` 使用系统稳定包集；`pkgsUnstable` 通过 `extraSpecialArgs` 单独传入，没有全局覆盖或 overlay。
 
-已配置的 `programs.*` 会安装对应软件，不要再重复加入 `home.packages`。例如给当前主机添加用户工具：
+`home/base/tools.nix` 的包列表每行写一个完整包名：`pkgs.xxx` 是 stable，`pkgsUnstable.xxx` 是 unstable。添加软件时直接增加一行。已配置的 `programs.*` 会安装对应软件，不要再重复加入 `home.packages`。
+
+例如给当前主机添加用户工具：
 
 ```nix
 # home/hosts/vps.nix
 { pkgs, pkgsUnstable, ... }:
 {
-  imports = [ ../base ];
+  imports = [ ../base/default.nix ];
   home.packages = [
     pkgs.sqlite
     pkgsUnstable.just

@@ -1,21 +1,40 @@
 { pkgs, pkgsUnstable, ... }:
 {
-  home.packages =
-    (with pkgs; [
-      # Stable user utilities and optional diagnostics.
-      curl wget jq yq-go tree less rsync
-      unzip zip gnutar gzip xz zstd
-      htop ncdu lsof file strace sysstat
-      mtr tcpdump nmap socat ethtool
-    ])
-    ++ (with pkgsUnstable; [
-      # Selected frequently updated terminal tools.
-      ripgrep fd btop
-    ]);
+  # 每行一个包，前缀直接表明来源；添加或删除一行即可调整软件。
+  home.packages = [
+    # 稳定源：日常工具与诊断软件。
+    pkgs.curl
+    pkgs.wget
+    pkgs.jq
+    pkgs.yq-go
+    pkgs.tree
+    pkgs.less
+    pkgs.rsync
+    pkgs.unzip
+    pkgs.zip
+    pkgs.gnutar
+    pkgs.gzip
+    pkgs.xz
+    pkgs.zstd
+    pkgs.htop
+    pkgs.ncdu
+    pkgs.lsof
+    pkgs.file
+    pkgs.strace
+    pkgs.sysstat
+    pkgs.mtr
+    pkgs.tcpdump
+    pkgs.nmap
+    pkgs.socat
+    pkgs.ethtool
 
-  # Applications configured through programs.* are installed by those modules;
-  # keep them out of home.packages to avoid duplicate stable/unstable binaries.
+    # unstable 源：精选的新版本终端工具。
+    pkgsUnstable.ripgrep
+    pkgsUnstable.fd
+    pkgsUnstable.btop
+  ];
 
+  # programs.* 启用后会安装软件，无需再加到上面的 home.packages。
   programs.git = {
     enable = true;
     package = pkgsUnstable.git;
@@ -24,7 +43,7 @@
       pull.ff = "only";
       fetch.prune = true;
     };
-    # Set your author name/email in a host-specific user override.
+    # 作者姓名和邮箱可在 home/hosts/vps.nix 中设置。
   };
 
   programs.neovim = {
@@ -33,7 +52,7 @@
     defaultEditor = true;
     viAlias = true;
     vimAlias = true;
-    # Keep the VPS editor small; enable language providers when needed.
+    # 按需启用语言 provider，默认保持编辑器精简。
     withNodeJs = false;
     withPython3 = false;
     withRuby = false;
@@ -41,7 +60,7 @@
 
   programs.tmux = {
     enable = true;
-    # Stable by default, unlike the selected tools above.
+    # 未指定 package 时，Home Manager 使用稳定源中的默认软件包。
     terminal = "tmux-256color";
     clock24 = true;
     baseIndex = 1;

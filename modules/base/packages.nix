@@ -1,6 +1,10 @@
 { pkgs, ... }:
 {
-  # NixOS already provides OpenSSH, sudo, util-linux, iproute2, iputils and rebuild.
-  # Keep only extra system diagnostics here; user applications live in home/base/.
-  environment.systemPackages = with pkgs; [ dnsutils pciutils usbutils ];
+  # OpenSSH、sudo、网络基础工具和 nixos-rebuild 由 NixOS 自带模块提供。
+  # 此处只添加额外的系统诊断工具；用户软件放在 home/base/tools.nix。
+  environment.systemPackages = [
+    pkgs.dnsutils
+    pkgs.pciutils
+    pkgs.usbutils
+  ];
 }

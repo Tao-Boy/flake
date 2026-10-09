@@ -2,7 +2,7 @@
 
 面向 **x86_64-linux VPS** 的 NixOS 配置。系统使用 NixOS 26.05；用户环境交给 Home Manager；Git、Neovim、fzf、bat、eza、ripgrep、fd、btop 使用独立锁定的 nixpkgs-unstable。包含 disko 磁盘配置与 nixos-anywhere 安装入口。
 
-目录分工参考 [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config)，按少量 VPS 的需求精简。模块显式导入，主机直接使用原生 NixOS 选项。
+目录分工参考 [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config)，按少量 VPS 的需求精简。模块显式导入，主机直接使用原生 NixOS 选项。配置逐项声明，软件包写明 `pkgs.xxx` 或 `pkgsUnstable.xxx`，关键位置有中文注释；常用语法见[配置说明](docs/customization.md)。
 
 ## 目录
 
@@ -32,7 +32,9 @@ scripts/vps.sh              # 安装与更新预检
 docs/                      # 配置、部署、软件管理、运维说明
 ```
 
-配置链路：`flake.nix → outputs/default.nix → lib/nixos-system.nix → hosts/vps + home/hosts/vps.nix`。主机入口决定导入哪些模块；共用值只通过 `myvars` 传入，unstable 包集只传给 Home Manager。
+配置链路：`flake.nix → outputs/default.nix → lib/nixos-system.nix → hosts/vps/default.nix + home/hosts/vps.nix`。主机入口决定导入哪些模块；共用值通过 `myvars` 传入，unstable 包集只传给 Home Manager。
+
+`outputs/default.nix` 分别声明三个部署包，再在 `packages` 中导出。`meta.mainProgram` 指明对应命令，因此同一个包可以用于 `nix build` 和 `nix run`。
 
 ## 首次使用
 

@@ -13,6 +13,22 @@ nix build --no-write-lock-file \
   .#nixosConfigurations.vps.config.system.build.diskoScript
 ```
 
+## 检查项与登录保护
+
+`outputs/default.nix` 的 `checks` 逐项声明了 `home`、`shell` 和 `policy`。单独执行一个检查：
+
+```bash
+nix build --no-link .#checks.x86_64-linux.shell
+nix build --no-link .#checks.x86_64-linux.policy
+nix build --no-link .#checks.x86_64-linux.home
+```
+
+`policy` 用 Nix 的 `assert 条件; 后续表达式` 检查配置；条件全部满足后，返回内容为 `ok` 的构建目标。`--no-build` 会执行求值和断言，不运行 ShellCheck 的构建脚本。
+
+`nix flake check` 还会求值 `nixosConfigurations.vps`，触发 NixOS 自带的用户登录保护。若提示 root / wheel 用户没有密码或 SSH 公钥，先在 `vars/default.nix` 填写真实完整公钥，再执行预检。CI 的临时公钥只用于测试模板，不能作为 VPS 的登录凭据。
+
+## 开发工具
+
 开发环境提供 nixfmt、statix、deadnix、ShellCheck 和部署工具：
 
 ```bash

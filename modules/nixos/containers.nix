@@ -1,6 +1,5 @@
-{ ... }:
 {
-  # Import this module only on hosts using Podman.
+  # 在主机 imports 中加入本文件，就会启用 Podman。
   virtualisation.podman = {
     enable = true;
     dockerCompat = true;

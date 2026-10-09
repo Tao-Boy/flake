@@ -31,6 +31,8 @@ jobs:
       - name: Verify CLI and prepare a CI-only public key when needed
         run: |
           nix run --no-write-lock-file .#install -- --help
+          nix run --no-write-lock-file .#rebuild -- --help
+          nix run --no-write-lock-file .#preflight -- --help
           mkdir -p work
           keys=$(nix eval --json --no-write-lock-file .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys')
           if jq -e 'length == 0' <<<"$keys"; then

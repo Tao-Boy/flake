@@ -1,5 +1,6 @@
 { lib, myvars, ... }:
 {
+  # 这些默认设置可以在 hosts/vps/default.nix 中直接覆盖。
   services.qemuGuest.enable = lib.mkDefault true;
   services.chrony.enable = lib.mkDefault true;
   services.fstrim.enable = lib.mkDefault true;
@@ -19,6 +20,7 @@
     ProcessSizeMax = 0;
   };
 
+  # 具体网卡和地址写在 hosts/ 中；这里启用 VPS 共用的网络服务。
   networking = {
     useDHCP = false;
     useNetworkd = true;
@@ -27,6 +29,7 @@
   };
   services.resolved.enable = true;
 
+  # SSH 模块默认监听 22，并自动开放配置端口的防火墙规则。
   services.openssh = {
     enable = true;
     settings = {
@@ -46,11 +49,21 @@
     enable = true;
     maxretry = 5;
     bantime = "1h";
-    bantime-increment = { enable = true; maxtime = "24h"; };
-    jails.sshd.settings = { backend = "systemd"; findtime = "10m"; };
+    bantime-increment = {
+      enable = true;
+      maxtime = "24h";
+    };
+    jails.sshd.settings = {
+      backend = "systemd";
+      findtime = "10m";
+    };
   };
 
-  boot.kernelParams = lib.mkAfter [ "console=tty0" "console=ttyS0,115200n8" ];
+  # mkAfter 将串口控制台参数追加到其他模块提供的参数之后。
+  boot.kernelParams = lib.mkAfter [
+    "console=tty0"
+    "console=ttyS0,115200n8"
+  ];
   boot.loader.timeout = lib.mkDefault 3;
   boot.kernel.sysctl = {
     "net.ipv4.tcp_syncookies" = lib.mkDefault 1;

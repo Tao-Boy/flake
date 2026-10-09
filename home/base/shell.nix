@@ -1,5 +1,6 @@
 { pkgsUnstable, ... }:
 {
+  # 日常 Bash 配置；别名直接写在 shellAliases 中。
   programs.bash = {
     enable = true;
     historyControl = [ "ignoreboth" ];
@@ -13,6 +14,7 @@
       failed = "systemctl --failed";
     };
   };
+  # 这些 programs 模块会自行安装所选 unstable 软件包。
   programs.fzf = {
     enable = true;
     package = pkgsUnstable.fzf;

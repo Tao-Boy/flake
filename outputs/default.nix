@@ -1,68 +1,124 @@
-{ self, nixpkgs, ... }@inputs:
+# inputs 包含 flake.nix 中声明的软件源。
+inputs:
 let
-  system = "x86_64-linux";
-  lib = nixpkgs.lib;
-  pkgs = nixpkgs.legacyPackages.${system};
-  myvars = import ../vars;
-  mkSystem = import ../lib/nixos-system.nix { inherit inputs myvars; };
-  scriptTools = with pkgs; [
-    bash coreutils git jq openssh nix nixos-anywhere nixos-rebuild
-  ];
-  vps = pkgs.writeShellApplication {
+  # 部署工具使用稳定源；本仓库只支持 x86_64-linux。
+  pkgs = inputs.nixpkgs.legacyPackages."x86_64-linux";
+  myvars = import ../vars/default.nix;
+
+  # 添加主机时，复制这段并修改名称、系统入口和用户入口。
+  vpsSystem = import ../lib/nixos-system.nix {
+    inputs = inputs;
+    myvars = myvars;
     name = "vps";
-    runtimeInputs = scriptTools;
-    text = builtins.readFile ../scripts/vps.sh;
-  };
-  commands = {
-    install = "Install a VPS with preflight and disk confirmation";
-    rebuild = "Update a VPS with nixos-rebuild";
-    preflight = "Validate a VPS configuration and SSH public keys";
-  };
-  commandPackages = lib.mapAttrs (command: _: pkgs.writeShellApplication {
-    name = "vps-${command}";
-    text = ''exec ${vps}/bin/vps ${command} "$@"'';
-  }) commands;
-in
-{
-  # Register each host and its user entry together.
-  nixosConfigurations.vps = mkSystem {
-    name = "vps";
-    nixosModule = ../hosts/vps;
+    nixosModule = ../hosts/vps/default.nix;
     homeModule = ../home/hosts/vps.nix;
   };
+  vpsConfig = vpsSystem.config;
 
-  formatter.${system} = pkgs.nixfmt;
-  packages.${system} = commandPackages // {
-    inherit vps;
+  # 统一部署脚本。runtimeInputs 为脚本提供运行时所需的命令。
+  vps = pkgs.writeShellApplication {
+    name = "vps";
+    meta.mainProgram = "vps";
+    runtimeInputs = [
+      pkgs.bash
+      pkgs.coreutils
+      pkgs.git
+      pkgs.jq
+      pkgs.openssh
+      pkgs.nix
+      pkgs.nixos-anywhere
+      pkgs.nixos-rebuild
+    ];
+    text = builtins.readFile ../scripts/vps.sh;
+  };
+
+  # 三个包装命令分别声明；"$@" 原样传递终端中的参数。
+  install = pkgs.writeShellApplication {
+    name = "vps-install";
+    meta.mainProgram = "vps-install";
+    text = ''
+      exec ${vps}/bin/vps install "$@"
+    '';
+  };
+
+  rebuild = pkgs.writeShellApplication {
+    name = "vps-rebuild";
+    meta.mainProgram = "vps-rebuild";
+    text = ''
+      exec ${vps}/bin/vps rebuild "$@"
+    '';
+  };
+
+  preflight = pkgs.writeShellApplication {
+    name = "vps-preflight";
+    meta.mainProgram = "vps-preflight";
+    text = ''
+      exec ${vps}/bin/vps preflight "$@"
+    '';
+  };
+
+  # 检查用的小函数：某个 SSH 端口是否在防火墙允许列表中。
+  sshPortIsOpen = port: builtins.elem port vpsConfig.networking.firewall.allowedTCPPorts;
+in
+{
+  nixosConfigurations.vps = vpsSystem;
+
+  formatter."x86_64-linux" = pkgs.nixfmt;
+
+  # 这些软件包既能 nix build，也能通过 meta.mainProgram 被 nix run 运行。
+  packages."x86_64-linux" = {
+    vps = vps;
+    install = install;
+    rebuild = rebuild;
+    preflight = preflight;
     nixos-anywhere = pkgs.nixos-anywhere;
-    default = commandPackages.install;
+    default = install;
   };
-  apps.${system} = lib.mapAttrs (command: description: {
-    type = "app";
-    program = "${commandPackages.${command}}/bin/vps-${command}";
-    meta.description = description;
-  }) commands;
-  devShells.${system}.default = pkgs.mkShell {
-    packages = scriptTools ++ (with pkgs; [ nixfmt statix deadnix shellcheck ]);
+
+  # nix develop 使用的本地开发工具。
+  devShells."x86_64-linux".default = pkgs.mkShell {
+    packages = [
+      pkgs.bash
+      pkgs.coreutils
+      pkgs.git
+      pkgs.jq
+      pkgs.openssh
+      pkgs.nix
+      pkgs.nixos-anywhere
+      pkgs.nixos-rebuild
+      pkgs.nixfmt
+      pkgs.statix
+      pkgs.deadnix
+      pkgs.shellcheck
+    ];
   };
-  checks.${system} = {
-    home = self.nixosConfigurations.vps.config.home-manager.users.${myvars.username}.home.activationPackage;
-    shell = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
+
+  # nix flake check 使用的三个检查项。
+  checks."x86_64-linux" = {
+    # 构建用户环境；用户名来自 vars/default.nix。
+    home = vpsConfig.home-manager.users.${myvars.username}.home.activationPackage;
+
+    # 构建此检查时运行 ShellCheck；$out 是构建结果的路径。
+    shell = pkgs.runCommand "shellcheck" {
+      nativeBuildInputs = [ pkgs.shellcheck ];
+    } ''
       shellcheck ${../scripts/vps.sh}
       touch $out
     '';
+
+    # 求值时逐项验证配置，通过后生成内容为 ok 的检查结果。
+    # 公钥非空的登录保护由 NixOS 用户模块执行；格式由部署预检验证。
     policy =
-      let c = self.nixosConfigurations.vps.config;
-      in assert c.services.openssh.settings.PasswordAuthentication == false;
-         assert c.services.openssh.settings.KbdInteractiveAuthentication == false;
-         assert c.services.openssh.settings.PermitRootLogin == "no";
-         assert c.networking.firewall.enable;
-         assert lib.all (port: lib.elem port c.networking.firewall.allowedTCPPorts) c.services.openssh.ports;
-         assert c.systemd.network.enable;
-         assert !c.services.timesyncd.enable;
-         assert !c.system.autoUpgrade.enable;
-         assert c.services.fail2ban.enable;
-         assert c.users.users.${myvars.username}.hashedPassword == "!";
-         pkgs.writeText "vps-policy" "ok";
+      assert vpsConfig.services.openssh.settings.PasswordAuthentication == false;
+      assert vpsConfig.services.openssh.settings.KbdInteractiveAuthentication == false;
+      assert vpsConfig.services.openssh.settings.PermitRootLogin == "no";
+      assert vpsConfig.networking.firewall.enable;
+      assert builtins.all sshPortIsOpen vpsConfig.services.openssh.ports;
+      assert vpsConfig.systemd.network.enable;
+      assert vpsConfig.services.timesyncd.enable == false;
+      assert vpsConfig.system.autoUpgrade.enable == false;
+      assert vpsConfig.services.fail2ban.enable;
+      assert vpsConfig.users.users.${myvars.username}.hashedPassword == "!";
+      pkgs.writeText "vps-policy" "ok";
   };
 }

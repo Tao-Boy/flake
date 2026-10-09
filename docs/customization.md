@@ -2,6 +2,40 @@
 
 主机直接填写原生 NixOS / disko 选项。常用修改只涉及 `vars/default.nix`、`hosts/vps/` 和 `home/hosts/vps.nix`。
 
+## 常用 Nix 语法
+
+本仓库将软件包和命令逐个写出；日常修改主要用到以下语法：
+
+| 写法 | 含义 |
+| --- | --- |
+| `{ name = value; }` | 属性集；每项赋值以分号结束 |
+| `[ item1 item2 ]` | 列表；元素用空白分隔 |
+| `pkgs.sqlite` | 从稳定包集中选取 sqlite |
+| `pkgsUnstable.just` | 从 unstable 包集中选取 just |
+| `imports = [ ./file.nix ];` | 将模块文件加入配置 |
+| `services.openssh.ports = [ 2222 ];` | 设置嵌套配置项 |
+| `lib.mkDefault value` | 提供可被主机普通赋值覆盖的默认值 |
+
+路径相对于当前 Nix 文件所在目录。仓库中的导入路径写明 `default.nix`，可以直接打开对应文件。
+
+没有参数需求的模块直接写成属性集。需要软件包等参数时，文件采用下面的形式；NixOS / Home Manager 会自动提供模块参数：
+
+```nix
+{ pkgs, pkgsUnstable, ... }:
+{
+  home.packages = [
+    pkgs.sqlite
+    pkgsUnstable.just
+  ];
+}
+```
+
+顶部花括号是参数声明，`...` 允许接收系统传入的其他参数；冒号后面的花括号是返回的配置。`home/base/tools.nix` 已采用这个形式，添加软件时直接往列表中加一行即可。
+
+`let name = value; in ...` 用于保存共用值，例如磁盘路径。`users.${myvars.username}` 根据用户名选择账号属性，用户名仍只在 `vars/default.nix` 修改。
+
+`outputs/default.nix` 保留了检查 SSH 端口用的一个简单函数；主机注册、软件包和部署入口均显式声明。新增部署入口时，可以复制现有的 `writeShellApplication` 定义，在 `packages` 中增加对应项。
+
 ## 用户与 SSH
 
 在 `vars/default.nix` 修改 `username`、`sshKeys`。公钥应粘贴完整一行 `.pub` 内容；私钥、密码和令牌不能提交。用户名供 NixOS 用户、SSH AllowUsers、sudo、Home Manager 共用。
@@ -73,21 +107,25 @@ time.timeZone = "Asia/Shanghai";
 
 1. 复制 `hosts/vps/` 为 `hosts/edge/`，调整磁盘和网络。
 2. 复制 `home/hosts/vps.nix` 为 `home/hosts/edge.nix`。
-3. 在 `outputs/default.nix` 中将主机注册改为：
+3. 在 `outputs/default.nix` 的 `let` 区域，复制 `vpsSystem` 为 `edgeSystem`，并修改三个主机参数：
 
 ```nix
-nixosConfigurations = {
-  vps = mkSystem {
-    name = "vps";
-    nixosModule = ../hosts/vps;
-    homeModule = ../home/hosts/vps.nix;
-  };
-  edge = mkSystem {
-    name = "edge";
-    nixosModule = ../hosts/edge;
-    homeModule = ../home/hosts/edge.nix;
-  };
+edgeSystem = import ../lib/nixos-system.nix {
+  inputs = inputs;
+  myvars = myvars;
+  name = "edge";
+  nixosModule = ../hosts/edge/default.nix;
+  homeModule = ../home/hosts/edge.nix;
 };
 ```
+
+在 `in` 后的输出属性集中，保留原来的 vps，并增加 edge：
+
+```nix
+nixosConfigurations.vps = vpsSystem;
+nixosConfigurations.edge = edgeSystem;
+```
+
+主机生成文件现在一次接收全部参数，直接在调用处写明每个值即可。
 
 `git add` 新文件后执行 `nix run .#preflight -- edge`。主机名由 `name` 默认设置，共用管理员/公钥来自 `vars/`。现有 CI 构建 `vps`，新增主机应增加对应系统和用户环境的构建检查。
