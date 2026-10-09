@@ -15,7 +15,7 @@ nix run .#rebuild -- vps ops@SERVER_IP --action switch
 
 `test` 会实际临时应用配置，但不更新下次启动的默认 generation；`switch` 会应用并持久化；`boot` 只更新下次启动；`dry-activate` 只显示将执行的 activation 动作。修改网络仍可能中断 SSH，因此始终准备服务商控制台。
 
-部署脚本默认在本机构建，通过 SSH 复制到目标后用 sudo 激活。管理员免密码 sudo，不需要把 `ops` 加到 Nix 的 trusted-users。把普通用户加入 trusted-users 会扩大其权限，不应作为常规部署步骤。
+部署脚本默认在本机构建，通过 SSH 复制到目标后用 sudo 激活。为接收本机构建且未签名的 closure，Nix 只信任 root 与已经拥有免密码 sudo 的配置管理员；不会信任所有普通用户或整个 wheel 组。若改用签名的部署 closure，可进一步缩小 trusted-users。
 
 直接命令对应：
 

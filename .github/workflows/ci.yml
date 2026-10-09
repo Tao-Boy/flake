@@ -19,6 +19,8 @@ jobs:
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+        with:
+          determinate: false
       - name: Check shell and build deployment tools
         run: |
           nix build --no-link --no-write-lock-file \
@@ -35,7 +37,7 @@ jobs:
               exit 1
             fi
             cat preflight.log
-            rg '必须配置至少一个完整的 SSH 公钥' preflight.log
+            grep -F '必须配置至少一个完整的 SSH 公钥' preflight.log
           fi
       - name: Add an ephemeral CI-only public key if the template is unconfigured
         run: |

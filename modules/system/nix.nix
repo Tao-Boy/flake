@@ -7,7 +7,9 @@
       # Small VPSs often have too little RAM for parallel compilation.
       max-jobs = lib.mkDefault 1;
       cores = lib.mkDefault 0;
-      trusted-users = [ "root" ];
+      # This administrator already has passwordless sudo; trust allows receiving
+      # unsigned closures built locally by nixos-rebuild over SSH.
+      trusted-users = [ "root" config.fleet.access.adminUser ];
     };
     nix.gc = {
       automatic = true;
