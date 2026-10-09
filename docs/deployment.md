@@ -1,72 +1,88 @@
-# 首次安装与远程更新
+# 安装与远程更新
 
-所有命令在克隆后的仓库根目录执行。本机需要启用 flakes 的 Nix、Git、SSH；flake 的部署包自动提供 nixos-anywhere、nixos-rebuild 和所需工具。目标仅支持 x86_64。
+在仓库根目录执行命令。本机需要启用 flakes 的 Nix、Git、SSH；目标为 x86_64 VPS，需要 root SSH 和可用的 kexec。
 
-## 安装前
+## 准备配置
 
-1. 备份目标数据，确认服务商的救援控制台可用。
-2. 在 `vars/default.nix` 填写管理员完整 SSH 公钥。
-3. 核对 `hosts/vps/disk-config.nix` 的磁盘和 `hosts/vps/default.nix` 的网络。
-4. 准备原系统或救援系统的 root SSH 访问；目标应能执行 kexec，普通容器 VPS 不适用。
-5. 通过服务商控制台等可信渠道核对 SSH 主机密钥指纹，将当前目标录入本机 known_hosts。脚本使用严格主机密钥校验。
+在 `vars/default.nix` 填写真实完整 SSH 公钥；核对 `hosts/vps/disk-config.nix` 的整盘路径和 `hosts/vps/default.nix` 的网卡、地址与网关。默认配置适合 KVM/QEMU VPS，普通容器 VPS 不适用。
+
+空公钥会触发 NixOS 的登录保护断言，因为 root 和管理员密码已锁定。配置完成后检查：
 
 ```bash
 git add .
-nix run .#preflight -- vps
+nix flake check --no-build
 ```
 
-预检直接读取原生配置：SSH AllowUsers、用户 authorizedKeys、SSH 端口、disko 磁盘、GRUB 模式及 networkd 网络信息。验证所有公钥，并强制求值 NixOS 系统和 disko 脚本。
+## nixos-anywhere 安装
 
-当前快捷入口要求一个管理员、一块磁盘、一个 SSH 端口和 GRUB；复杂安装可扩展预检后使用。空公钥不会被模板或 CI 自动变成真实访问凭据。
-
-## 只读远端预检
+**首次安装会清空目标磁盘，先做好备份。**
 
 ```bash
-nix run .#install -- vps root@YOUR_SERVER \
-  --port 22 --identity ~/.ssh/id_ed25519 --dry-run
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER
 ```
 
-它确认 root 权限、x86_64 架构、目标块设备和固件，显示磁盘及网络后退出。它不会运行分区或安装命令。
-
-## 执行安装
+脚本直接调用 nixos-anywhere。参数按上游规则填写，例如：
 
 ```bash
-nix run .#install -- vps root@YOUR_SERVER \
-  --port 22 --identity ~/.ssh/id_ed25519 --build-on auto
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  -i ~/.ssh/id_ed25519 --ssh-port 22 --build-on auto
 ```
 
-再次通过预检后，在交互终端输入显示的完整 `ERASE <SSH目标> <磁盘>`。随后 nixos-anywhere 使用 `--flake .#vps` 与 disko 清空磁盘、创建分区并安装。
+- `--flake`：选择主机配置，例如 `.#vps`。
+- `--target-host`：当前系统的 root SSH 目标。
+- `-i`：连接使用的私钥文件。
+- `--ssh-port`：当前系统的 SSH 端口。
+- `--build-on`：选择 `auto`、`local` 或 `remote` 构建。
 
-`--build-on` 支持 `auto`、`local`、`remote`。远端内存较小时可用本机 Linux 或远程 Linux builder 构建；非 Linux 本机需要合适的 Linux 构建器，或选择 `remote`。
-
-`--port` 是当前原系统端口；临时 kexec 安装器使用 22。服务商外部防火墙必须允许该阶段所需连接，nixos-anywhere 自行管理临时安装凭据。安装完成后按配置端口登录管理员，root SSH 已关闭。
+所有选项都可以通过帮助查看：
 
 ```bash
-ssh -p 22 ops@YOUR_SERVER
-sudo systemctl --failed
+nix run .#install -- --help
 ```
 
-重装会更换 SSH 主机密钥。先通过控制台核验新指纹，再更新 known_hosts；不要盲目忽略校验。服务商 DHCP、静态路由、EFI、VirtIO 等要求决定模板是否可直接用于实际机器。
+也可以直接使用上游包：
 
-也可先在支持 KVM 的 Linux 上运行上游 VM 安装测试（仍需有效公钥）：
+```bash
+nix run .#nixos-anywhere -- --flake .#vps --target-host root@YOUR_SERVER
+```
+
+安装器的临时 kexec 环境通常使用 SSH 22，服务商防火墙需要允许连接。非 Linux 本机需要 Linux 构建器，或采用远端构建。
+
+安装完成后使用配置中的管理员和端口登录：
+
+```bash
+ssh ops@YOUR_SERVER
+```
+
+重装会改变 SSH 主机密钥；核验新的指纹后再更新 known_hosts。服务商的磁盘、网络和固件要求应在安装前确认。
+
+支持 KVM 的 Linux 上可以运行上游 VM 测试：
 
 ```bash
 nix run .#nixos-anywhere -- --flake .#vps --vm-test
 ```
 
-## 日常更新
+## 标准 nixos-rebuild 更新
 
 ```bash
-nix run .#rebuild -- vps ops@YOUR_SERVER --identity ~/.ssh/id_ed25519
-# 用第二个 SSH 会话检查网络、登录、服务；成功后持久化
-nix run .#rebuild -- vps ops@YOUR_SERVER \
-  --identity ~/.ssh/id_ed25519 --action switch
+nix develop
+nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
+# 用第二个 SSH 会话验证，再持久化
+nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
 ```
 
-默认 `test` 临时激活；`switch` 同时更新启动默认配置；`boot` 仅更新下次启动；还支持 `dry-activate` 与 `build`。更新通过管理员免密码 sudo 激活，Home Manager 同步切换。
+`test` 临时激活；`switch` 同时更新启动默认配置；`boot` 仅更新下次启动。管理员通过免密码 sudo 激活系统，Home Manager 同步更新。
 
-改 SSH 端口时，在首次更新中传入当前端口，验证新的连接后再使用新端口。`test` 导致连接中断时，可通过控制台重启回到上次持久化的启动配置。更新操作同样不会自动改写锁文件。
+端口和私钥也可以放到本机 SSH 配置中：
 
-## 配置未生效
+```sshconfig
+Host my-vps
+  HostName YOUR_SERVER
+  User ops
+  Port 22
+  IdentityFile ~/.ssh/id_ed25519
+```
 
-flake 只包含 Git 已跟踪文件；新建文件必须先 `git add`。预检显示本地配置，并不会替你确认服务商分配的实际磁盘、地址或网关。网络改动前保留控制台和可用的 SSH 会话。
+随后使用 `--target-host my-vps`。修改 SSH 端口后同步调整 SSH 配置；网络或端口变更前保留服务商控制台和可用连接。
+
+如果 `test` 后失去连接，可通过控制台重启，回到上次持久化的启动配置。新建 Nix 文件先 `git add`，否则 Git flake 不会包含它。

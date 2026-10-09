@@ -2,34 +2,22 @@
 
 ## 修改后检查
 
-先配置 SSH 公钥，新增文件先 `git add`：
+先填 SSH 公钥，新增文件先 `git add`：
 
 ```bash
-nix run .#preflight -- vps
-nix flake check --no-build --no-write-lock-file
-nix build --no-write-lock-file .#checks.x86_64-linux.home
-nix build --no-write-lock-file \
+nix flake check --no-build
+nix build --no-link .#checks.x86_64-linux.install
+nix build --no-link .#checks.x86_64-linux.home
+nix build --no-link \
   .#nixosConfigurations.vps.config.system.build.toplevel \
   .#nixosConfigurations.vps.config.system.build.diskoScript
 ```
 
-## 检查项与登录保护
+`checks` 只包含两个构建目标：`install` 和 `home`。安装包由 `writeShellApplication` 生成，构建时自动运行 ShellCheck；`home` 构建 Home Manager 环境。`nix flake check` 会构建这些目标，`--no-build` 只执行求值。
 
-`outputs/default.nix` 的 `checks` 逐项声明了 `home`、`shell` 和 `policy`。单独执行一个检查：
-
-```bash
-nix build --no-link .#checks.x86_64-linux.shell
-nix build --no-link .#checks.x86_64-linux.policy
-nix build --no-link .#checks.x86_64-linux.home
-```
-
-`policy` 用 Nix 的 `assert 条件; 后续表达式` 检查配置；条件全部满足后，返回内容为 `ok` 的构建目标。`--no-build` 会执行求值和断言，不运行 ShellCheck 的构建脚本。
-
-`nix flake check` 还会求值 `nixosConfigurations.vps`，触发 NixOS 自带的用户登录保护。若提示 root / wheel 用户没有密码或 SSH 公钥，先在 `vars/default.nix` 填写真实完整公钥，再执行预检。CI 的临时公钥只用于测试模板，不能作为 VPS 的登录凭据。
+完整检查也会求值 `nixosConfigurations.vps`，因此 NixOS 自带的登录保护断言仍会执行。若提示 root / wheel 用户缺少密码或 SSH 公钥，在 `vars/default.nix` 填写真实完整公钥即可。
 
 ## 开发工具
-
-开发环境提供 nixfmt、statix、deadnix、ShellCheck 和部署工具：
 
 ```bash
 nix develop
@@ -37,9 +25,7 @@ nix fmt
 shellcheck scripts/vps.sh
 ```
 
-CI 先检查部署包/脚本与空公钥拦截，再给未配置模板注入临时测试公钥。随后检查全部 flake 输出、构建用户环境并执行 nvim/git/fzf/bat/eza/rg/fd/btop，最后实际构建系统与分区脚本，确认系统中的 SSH、sudo、网络和诊断工具可用。临时私钥仅存在 CI runner 的工作区。
-
-这些检查验证配置与软件构建；实际网络、磁盘、固件和服务商限制仍需目标上的预检。CI 不连接或安装 VPS。
+CI 验证安装器帮助，求值 flake，并构建用户环境、系统和磁盘脚本。空公钥模板会在 CI 工作区注入临时公钥，不会写回仓库或连接 VPS。
 
 ## 服务和网络
 
@@ -72,8 +58,9 @@ journalctl -u home-manager-ops.service -b
 ```bash
 # 本机仓库中更新锁文件，检查并提交后远程更新
 nix flake update nixpkgs-unstable
-nix run .#rebuild -- vps ops@YOUR_SERVER --action test
-nix run .#rebuild -- vps ops@YOUR_SERVER --action switch
+nix develop
+nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
 ```
 
 远端紧急回滚：

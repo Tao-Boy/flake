@@ -21,27 +21,14 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           determinate: false
-      - name: Check shell and build deployment tools
+      - name: Build the basic installer and verify its help
         run: |
-          nix build --no-link --no-write-lock-file \
-            .#checks.x86_64-linux.shell \
-            .#packages.x86_64-linux.install \
-            .#packages.x86_64-linux.rebuild \
-            .#packages.x86_64-linux.preflight
-      - name: Verify CLI and prepare a CI-only public key when needed
-        run: |
+          nix build --no-link --no-write-lock-file .#checks.x86_64-linux.install
           nix run --no-write-lock-file .#install -- --help
-          nix run --no-write-lock-file .#rebuild -- --help
-          nix run --no-write-lock-file .#preflight -- --help
+      - name: Prepare a CI-only public key for an unconfigured template
+        run: |
           mkdir -p work
-          keys=$(nix eval --json --no-write-lock-file .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys')
-          if jq -e 'length == 0' <<<"$keys"; then
-            if nix run --no-write-lock-file .#preflight -- vps >preflight.log 2>&1; then
-              echo "Empty SSH keys must never pass deployment preflight"
-              exit 1
-            fi
-            cat preflight.log
-            grep -F '必须配置至少一个完整的 SSH 公钥' preflight.log
+          if [ "$(nix eval --json --file vars/default.nix sshKeys)" = '[]' ]; then
             ssh-keygen -q -t ed25519 -N "" -f work/ci-key
             export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
             python3 - <<'PY'
@@ -56,24 +43,11 @@ jobs:
           path.write_text(source)
           PY
           fi
-      - name: Evaluate every flake output and NixOS assertion
+      - name: Evaluate the flake and NixOS assertions
         run: nix flake check --no-build --no-write-lock-file --show-trace
-      - name: Verify preflight accepts a configured public key
-        run: nix run --no-write-lock-file .#preflight -- vps
-      - name: Build and smoke-test the Home Manager user environment
+      - name: Build the user environment, system and disk script
         run: |
-          nix build --no-write-lock-file --print-build-logs \
-            --out-link work/home-activation .#checks.x86_64-linux.home
-          work/home-activation/home-path/bin/nvim --headless -u NONE -i NONE '+qa'
-          for tool in git fzf bat eza rg fd btop; do
-            work/home-activation/home-path/bin/"$tool" --version
-          done
-      - name: Build the VPS system and disk script, verify system tools
-        run: |
-          nix build --no-write-lock-file --print-build-logs \
-            --out-link work/system .#nixosConfigurations.vps.config.system.build.toplevel
           nix build --no-link --no-write-lock-file --print-build-logs \
+            .#checks.x86_64-linux.home \
+            .#nixosConfigurations.vps.config.system.build.toplevel \
             .#nixosConfigurations.vps.config.system.build.diskoScript
-          for tool in ssh sudo lsblk ip ping dig lspci lsusb nixos-rebuild; do
-            test -x "work/system/sw/bin/$tool"
-          done

@@ -34,7 +34,7 @@
 
 `let name = value; in ...` 用于保存共用值，例如磁盘路径。`users.${myvars.username}` 根据用户名选择账号属性，用户名仍只在 `vars/default.nix` 修改。
 
-`outputs/default.nix` 保留了检查 SSH 端口用的一个简单函数；主机注册、软件包和部署入口均显式声明。新增部署入口时，可以复制现有的 `writeShellApplication` 定义，在 `packages` 中增加对应项。
+`outputs/default.nix` 显式声明主机、安装包和开发环境。安装包只调用 nixos-anywhere；`checks` 只引用已有的安装包和 Home Manager 构建目标。
 
 ## 用户与 SSH
 
@@ -46,7 +46,7 @@
 services.openssh.ports = [ 2222 ];
 ```
 
-防火墙随 SSH 端口更新；远程部署的 `--port` 始终指**当前**可连接端口。修改端口后先 `test`，另开连接验证，再 `switch`。
+防火墙随 SSH 端口更新。首次安装的 `--ssh-port` 指当前系统的端口；日常重建使用 SSH 客户端配置。修改端口后先 `test`，另开连接验证，再 `switch`。
 
 ## 网络
 
@@ -128,4 +128,4 @@ nixosConfigurations.edge = edgeSystem;
 
 主机生成文件现在一次接收全部参数，直接在调用处写明每个值即可。
 
-`git add` 新文件后执行 `nix run .#preflight -- edge`。主机名由 `name` 默认设置，共用管理员/公钥来自 `vars/`。现有 CI 构建 `vps`，新增主机应增加对应系统和用户环境的构建检查。
+`git add` 新文件后执行 `nix flake check --no-build`。安装新主机时使用 `nix run .#install -- --flake .#edge --target-host root@YOUR_SERVER`。主机名由 `name` 默认设置，共用管理员/公钥来自 `vars/`。现有 CI 构建 `vps`，新增主机应增加对应系统和用户环境的构建检查。
