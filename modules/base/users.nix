@@ -5,6 +5,8 @@
   users.users.root.hashedPassword = "!";
   users.users.${myvars.username} = {
     isNormalUser = true;
+    # /var 每次重启清空，固定 UID 避免持久 home 的文件归属改变。
+    uid = 1000;
     extraGroups = [ "wheel" ];
     hashedPassword = "!";
     openssh.authorizedKeys.keys = myvars.sshKeys;

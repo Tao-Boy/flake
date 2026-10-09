@@ -9,9 +9,9 @@
     algorithm = "zstd";
     memoryPercent = lib.mkDefault 50;
   };
+  # 日志只保留本次启动，与临时根目录的行为一致。
   services.journald.extraConfig = ''
-    Storage=persistent
-    SystemMaxUse=256M
+    Storage=volatile
     RuntimeMaxUse=64M
     MaxRetentionSec=14day
   '';
@@ -32,6 +32,18 @@
   # SSH 模块默认监听 22，并自动开放配置端口的防火墙规则。
   services.openssh = {
     enable = true;
+    # 主机私钥由 sshd 自动生成并保留在 /nix，重启不会改变指纹。
+    hostKeys = [
+      {
+        type = "ed25519";
+        path = "/nix/var/lib/sshd/ssh_host_ed25519_key";
+      }
+      {
+        type = "rsa";
+        bits = 4096;
+        path = "/nix/var/lib/sshd/ssh_host_rsa_key";
+      }
+    ];
     settings = {
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;

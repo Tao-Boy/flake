@@ -4,7 +4,13 @@ let
   disk = "/dev/vda";
 in
 {
-  # GPT 分区同时支持 BIOS / UEFI；文件系统挂载由 disko 生成。
+  # 根目录在内存中，每次重启清空；50% 是上限，不会提前占用内存。
+  disko.devices.nodev."/" = {
+    fsType = "tmpfs";
+    mountOptions = [ "size=50%" "mode=755" ];
+  };
+
+  # GPT 同时支持 BIOS / UEFI；/boot、/nix 和 /home 保存在磁盘上。
   disko.devices.disk.system = {
     type = "disk";
     device = disk;
@@ -25,18 +31,32 @@ in
             mountOptions = [ "umask=0077" ];
           };
         };
-        root = {
+        data = {
           size = "100%";
           content = {
-            type = "filesystem";
-            format = "ext4";
-            mountpoint = "/";
-            mountOptions = [ "defaults" "noatime" ];
+            type = "btrfs";
+            extraArgs = [ "-f" ];
+            # 两个子卷共享剩余磁盘空间，不需要分别指定大小。
+            subvolumes = {
+              "/nix" = {
+                mountpoint = "/nix";
+                mountOptions = [ "compress=zstd" "noatime" ];
+              };
+              "/home" = {
+                mountpoint = "/home";
+                mountOptions = [ "compress=zstd" "noatime" ];
+              };
+            };
           };
         };
       };
     };
   };
+
+  # 只补充启动顺序；设备、类型和挂载选项仍由 disko 生成。
+  fileSystems."/nix".neededForBoot = true;
+  fileSystems."/home".neededForBoot = true;
+
   boot.loader = {
     efi.canTouchEfiVariables = false;
     grub = {

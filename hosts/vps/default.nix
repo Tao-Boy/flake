@@ -24,6 +24,9 @@
       DHCP = "yes";
       IPv6AcceptRA = true;
     };
+    # /etc/machine-id 每次启动重新生成；DHCP 身份使用网卡 MAC。
+    dhcpV4Config.ClientIdentifier = "mac";
+    dhcpV6Config.DUIDType = "link-layer";
     linkConfig.RequiredForOnline = "routable";
   };
 

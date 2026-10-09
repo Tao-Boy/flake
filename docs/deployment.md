@@ -15,7 +15,7 @@ nix flake check --no-build
 
 ## nixos-anywhere 安装
 
-**首次安装会清空目标磁盘，先做好备份。**
+**安装会清空目标磁盘，先做好备份。** 旧版 ext4 根布局需要重装或另行规划迁移，不能直接用 `nixos-rebuild` 转换。备份 `/home`、应用数据和 SSH 主机密钥；恢复 home 时保持原文件的 UID/GID，并核对管理员默认 UID 1000。
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER
@@ -54,7 +54,7 @@ nix run .#nixos-anywhere -- --flake .#vps --target-host root@YOUR_SERVER
 ssh ops@YOUR_SERVER
 ```
 
-重装会改变 SSH 主机密钥；核验新的指纹后再更新 known_hosts。服务商的磁盘、网络和固件要求应在安装前确认。
+新系统的 SSH 主机密钥自动生成在 `/nix/var/lib/sshd`，日常重启会保留指纹。重装擦盘后会生成新密钥；核验新的指纹后再更新 known_hosts。服务商的磁盘、网络和固件要求应在安装前确认。
 
 支持 KVM 的 Linux 上可以运行上游 VM 测试：
 
@@ -71,7 +71,7 @@ nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
 ```
 
-`test` 临时激活；`switch` 同时更新启动默认配置；`boot` 仅更新下次启动。管理员通过免密码 sudo 激活系统，Home Manager 同步更新。
+`test` 临时激活；`switch` 同时更新启动默认配置；`boot` 仅更新下次启动。管理员通过免密码 sudo 激活系统，Home Manager 同步更新。系统代际保留在 `/nix`，启动文件保留在 `/boot`，因此 tmpfs 根不会丢失已 `switch` 的系统配置。手工编辑 `/etc` 或向 `/var` 写入数据则不会跨重启保留。
 
 端口和私钥也可以放到本机 SSH 配置中：
 

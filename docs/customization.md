@@ -38,7 +38,7 @@
 
 ## 用户与 SSH
 
-在 `vars/default.nix` 修改 `username`、`sshKeys`。公钥应粘贴完整一行 `.pub` 内容；私钥、密码和令牌不能提交。用户名供 NixOS 用户、SSH AllowUsers、sudo、Home Manager 共用。
+在 `vars/default.nix` 修改 `username`、`sshKeys`。公钥应粘贴完整一行 `.pub` 内容；私钥、密码和令牌不能提交。用户名供 NixOS 用户、SSH AllowUsers、sudo、Home Manager 共用。管理员 UID 固定为 1000；恢复旧 home 前用 `id -u` 核对原 UID，必要时修改 `modules/base/users.nix` 中的 `uid`。
 
 在 `hosts/vps/default.nix` 加入：
 
@@ -80,14 +80,18 @@ networking.nameservers = [ "1.1.1.1" "9.9.9.9" ];
 
 `hosts/vps/disk-config.nix` 的局部变量 `disk` 同时用于 disko 与 GRUB。先用 `lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS` 核对**整块磁盘**，有稳定 by-id 时优先使用。
 
-默认 GPT 分区为 1 MiB BIOS boot、512 MiB ESP、其余 ext4 根分区；BIOS/UEFI 均可启动。保持 `efi.canTouchEfiVariables = false` 与 `efiInstallAsRemovable = true` 可避免依赖 VPS 的可写 EFI 变量。
+默认 GPT 分区为 1 MiB BIOS boot、512 MiB ESP、其余 Btrfs 数据分区；Btrfs 的 `/nix` 和 `/home` 子卷共享空间。根目录 `/` 挂载 tmpfs，`size=50%` 是容量上限，按实际写入占用内存。`/boot` 为持久 ESP；BIOS/UEFI 均可启动。保持 `efi.canTouchEfiVariables = false` 与 `efiInstallAsRemovable = true` 可避免依赖 VPS 的可写 EFI 变量。
 
 通常无需改启动模式。若需要：
 
 - 仅 BIOS：将 `grub.efiSupport`、`grub.efiInstallAsRemovable` 改为 `false`，保留 BIOS boot 分区。
 - 仅 UEFI：将 `grub.devices` 改为 `[ "nodev" ]`，保留 ESP 和 EFI 设置；可删除 BIOS boot 分区。
 
-当前部署入口支持单块 disko 磁盘与 GRUB；多盘、RAID、其他引导器需调整脚本的预检。disko 是文件系统配置的唯一来源，勿在硬件文件重复声明 `fileSystems`。
+disko 负责生成挂载声明；`fileSystems."/nix".neededForBoot` 和 `/home` 的同名设置只补充启动顺序，确保它们在激活用户和 Home Manager 前挂载。勿在硬件文件重复声明设备与文件系统类型。多盘、RAID 或其他引导器直接调整 NixOS / disko 配置，安装脚本仍只调用上游命令。
+
+该布局会在重启后清空 `/etc`、`/var`、`/root` 等目录，声明式设置由系统重新生成；用户文件和 Home Manager 数据留在 `/home`。SSH 主机密钥由 NixOS 自动保存在 `/nix/var/lib/sshd`，不写入 Git 或 Nix store。`/etc/machine-id` 会重新生成，DHCP 使用 MAC 标识；需要长期稳定 machine-id 的应用应另外配置持久化。
+
+从旧 ext4 根布局迁移，需要备份后重装或人工迁移文件系统。`nixos-rebuild` 只应用系统声明，不会把 ext4 数据安全地转为这些 Btrfs 子卷。
 
 `hardware-configuration.nix` 是通用虚拟机驱动起点；特殊硬件按实际探测调整。若复制自动生成的硬件配置，保留所需驱动并去除与 disko 重复的挂载配置。
 

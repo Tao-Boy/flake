@@ -14,7 +14,7 @@ lib/nixos-system.nix        # 接入 disko / Home Manager
 vars/default.nix            # 管理员用户名和 SSH 公钥
 hosts/vps/
   default.nix               # 网络、时区、模块选择
-  disk-config.nix           # 磁盘、分区、GRUB
+  disk-config.nix           # tmpfs 根、持久 /nix 和 /home、GRUB
   hardware-configuration.nix
 modules/
   base/                     # Nix、用户、额外系统工具
@@ -63,6 +63,19 @@ cd flake
 nix flake check --no-build
 ```
 
+## 文件系统
+
+| 路径 | 存储 | 重启后 |
+| --- | --- | --- |
+| `/` | tmpfs，容量上限为内存的 50% | 清空，声明式配置重新生成 |
+| `/nix` | Btrfs 子卷 | 保留软件包、系统代际和 SSH 主机密钥 |
+| `/home` | Btrfs 子卷 | 保留用户文件、dotfiles 和用户软件数据 |
+| `/boot` | 512 MiB ESP | 保留引导器和启动文件 |
+
+`/nix` 和 `/home` 共享剩余磁盘空间。`/etc`、`/var`、`/root` 等目录位于临时根上；`/dev`、`/proc`、`/sys`、`/run` 使用 Linux 的常规虚拟文件系统。手工修改系统文件和服务运行数据会在重启后消失，需要保留的数据应放在持久目录中。
+
+**旧版 ext4 根分区不能通过 `nixos-rebuild` 自动转换为此布局。迁移前备份数据，再重装或单独规划磁盘迁移。**
+
 ## 安装
 
 **安装会按照 disko 配置清空目标磁盘。** 目标需要 root SSH 访问；先确认备份、磁盘和网络配置。
@@ -101,4 +114,4 @@ Home Manager 随系统一起激活。额外系统工具写在 `modules/base/pack
 - [可选 Nginx / Podman](docs/services.md)
 - [检查、回滚和运维](docs/operations.md)
 
-`checks` 只包含安装包与 Home Manager 环境。CI 构建这两个目标和 VPS 系统、disko 脚本；空公钥模板只在 CI 工作区注入临时测试公钥。
+`checks` 只包含安装包与 Home Manager 环境。CI 构建这两个目标和 VPS 系统、disko 脚本，并在虚拟机中验证启动、重启后持久目录与 SSH 指纹保留、临时目录清空；空公钥模板只在 CI 工作区注入临时测试公钥。
