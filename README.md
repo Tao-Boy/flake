@@ -1,112 +1,99 @@
 # flake
 
-用于 **x86_64 KVM/QEMU VPS** 的模块化 NixOS flake。以 NixOS **26.05** 为基础，使用独立的 **nixpkgs-unstable** 提供精选新版本工具，通过 **Home Manager** 管理用户软件和 dotfiles，使用 **disko** 声明磁盘布局，使用 **nixos-anywhere** 首次安装，以 **nixos-rebuild** 进行后续更新。
+面向 **x86_64-linux VPS** 的 NixOS 配置。系统使用 NixOS 26.05；用户环境交给 Home Manager；Git、Neovim、fzf、bat、eza、ripgrep、fd、btop 使用独立锁定的 nixpkgs-unstable。包含 disko 磁盘配置与 nixos-anywhere 安装入口。
 
-> 这是需要填写主机参数的模板。默认 SSH 公钥列表为空，部署脚本会拒绝安装。首次安装会清空指定磁盘，请先备份，并准备服务商的救援环境/控制台。
+目录分工参考 [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config)，按少量 VPS 的需求精简。模块显式导入，主机直接使用原生 NixOS 选项。
 
-## 配置结构
+## 目录
 
 ```text
-.
-├── flake.nix                    # 输入、主机生成、部署工具、开发环境和检查
-├── flake.lock                   # 固定 stable/unstable、Home Manager 与 disko
-├── hosts/
-│   ├── default.nix              # 主机清单；新增主机只需登记一次
-│   └── vps/
-│       ├── default.nix          # 磁盘、启动方式、公钥、网络、主机服务
-│       └── hardware-configuration.nix
-├── profiles/vps.nix             # VPS 场景组合与内核参数
-├── modules/
-│   ├── options.nix             # fleet.* 接口、类型及校验
-│   ├── access.nix              # 管理用户、SSH、sudo、fail2ban
-│   ├── home-manager.nix        # 将 Home Manager 接入配置管理员
-│   ├── networking.nix          # networkd、resolved、nftables 防火墙
-│   ├── storage.nix             # disko 分区与 GRUB，唯一的文件系统来源
-│   ├── system/                 # 基础系统、Nix、CLI、日常维护
-│   └── services/               # 按需启用 Nginx 与 Podman
-├── home/                       # 用户软件清单、Bash、Git、Neovim、tmux 配置
-├── scripts/vps.sh              # 预检、首次安装、日常更新共用入口
-├── docs/                       # 部署、定制、服务与运维说明
-└── .github/workflows/ci.yml     # 评估、脚本检查、工具与系统构建
+flake.nix                   # 软件源；outputs 的入口
+flake.lock                  # 固定所有输入版本
+outputs/default.nix         # 注册主机、部署命令、开发环境、检查
+lib/nixos-system.nix        # 接入 disko / Home Manager，传递共用参数
+vars/default.nix            # 管理员用户名、SSH 公钥
+hosts/vps/
+  default.nix               # 主机网络、时区、模块选择
+  disk-config.nix           # 目标磁盘、分区、GRUB
+  hardware-configuration.nix
+modules/
+  base/                     # Nix、系统用户、基础系统工具
+  nixos/
+    server.nix              # VPS 网络基础、SSH、安全、维护
+    nginx.nix               # 可选 Web 服务
+    containers.nix          # 可选 Podman
+home/
+  base/
+    default.nix
+    shell.nix               # Bash、fzf、bat、eza
+    tools.nix               # 用户工具、Git、Neovim、tmux
+  hosts/vps.nix             # 当前主机的用户配置
+scripts/vps.sh              # 安装与更新预检
+docs/                      # 配置、部署、软件管理、运维说明
 ```
 
-共用行为放在模块，VPS 的默认选择放在 profile，具体服务器参数放在 host。模块通过 NixOS options 传值，避免到处传递特殊参数、硬编码主机信息或覆盖 `pkgs`。
+配置链路：`flake.nix → outputs/default.nix → lib/nixos-system.nix → hosts/vps + home/hosts/vps.nix`。主机入口决定导入哪些模块；共用值只通过 `myvars` 传入，unstable 包集只传给 Home Manager。
 
-## 默认包含
-
-| 范围 | 内容 |
-| --- | --- |
-| 系统 | x86_64、KVM guest agent、UTC、chrony、串口控制台 |
-| 磁盘 | GPT、ext4；默认 GRUB 同时支持 BIOS 与 UEFI，512 MiB ESP |
-| 登录 | `ops` 用户、公钥登录、关闭 root/密码登录、管理员免密码 sudo |
-| 网络 | systemd-networkd、DHCP、IPv6 RA、resolved、nftables；默认只放行 SSH |
-| 防护与维护 | fail2ban、zram、fstrim、日志容量限制、每周清理 14 天前的 generations |
-| 系统工具 | 稳定源的 SSH、sudo、util-linux、iproute2、DNS 查询、硬件诊断与 nixos-rebuild |
-| 用户环境 | Home Manager 管理 Bash、Git、Neovim、tmux、curl、jq/yq、归档、监控及可选诊断工具 |
-| unstable 工具 | Neovim、Git、fzf、bat、eza、ripgrep、fd、btop；其他用户工具默认稳定源 |
-| 服务 | 可选 Nginx HTTPS 反向代理、Podman；默认关闭 |
-| 部署 | 固定版本的 nixos-anywhere、SSH 公钥校验、只读远端预检、擦盘确认、默认 `test` 更新 |
-
-## 快速开始
-
-以下命令中的 `SERVER_IP` 请替换为你的 VPS 地址。
-
-本机需要 **x86_64 Linux + Nix**，并已启用 `nix-command flakes`。目标 VPS 需要 root SSH 访问、支持 kexec 的完整虚拟机；不适用于 OpenVZ/LXC。
+## 首次使用
 
 ```bash
 git clone https://github.com/Tao-Boy/flake.git
 cd flake
-nix develop
 ```
 
-编辑 `hosts/vps/default.nix`：
+先改三个位置：
 
-1. 用 `lsblk` 确认 `fleet.diskDevice`，默认是 `/dev/vda`，也可使用完整的 `/dev/disk/by-id/...`。
-2. 在 `fleet.access.sshPublicKeys` 填入完整的 SSH **公钥**。
-3. 核对启动方式、网卡名称、DHCP/静态地址以及服务商的路由要求。
-4. 对照实际硬件检查 `hardware-configuration.nix`。
+1. `vars/default.nix`：填写完整 SSH 公钥，按需修改默认管理员 `ops`。
+2. `hosts/vps/disk-config.nix`：确认整块目标磁盘，默认 `/dev/vda`；默认 GPT + GRUB 同时支持 BIOS/UEFI。
+3. `hosts/vps/default.nix`：确认网卡与地址。默认匹配 `en* eth*`、DHCP、IPv6 RA；静态地址按[配置说明](docs/customization.md)修改。
 
 ```nix
-fleet.access.sshPublicKeys = [
-  # 在引号中粘贴自己的完整 .pub 文件内容。
-];
+# vars/default.nix
+{
+  username = "ops";
+  sshKeys = [
+    "ssh-ed25519 AAAA...你的完整公钥... you@laptop"
+  ];
+}
 ```
 
-上面的空列表不是可部署的设置。先添加真实公钥，再执行：
+将新文件加入 Git 后进行预检：
 
 ```bash
 git add .
-nix flake check --no-build
 nix run .#preflight -- vps
 
-# 先核对服务商给出的主机指纹，并建立初始 SSH 连接。
-ssh root@SERVER_IP
-
-# 只读检查：公钥、配置、目标架构、磁盘与当前网络。
-nix run .#install -- vps root@SERVER_IP --dry-run
-
-# 首次安装：需要输入包含目标与磁盘的完整 ERASE 确认文字。
-nix run .#install -- vps root@SERVER_IP
+# 当前目标系统需要 root SSH；先核对并登记服务器的 SSH 主机指纹。
+nix run .#install -- vps root@YOUR_SERVER --identity ~/.ssh/id_ed25519 --dry-run
+nix run .#install -- vps root@YOUR_SERVER --identity ~/.ssh/id_ed25519
 ```
 
-安装后通过 `ops` 登录。若服务器 SSH 主机密钥发生变化，请通过服务商控制台核对新指纹后再更新本机 known_hosts。
+**首次安装会清空目标磁盘。** 安装入口先验证公钥、NixOS 配置、目标架构、块设备和固件，再要求在交互终端输入 `ERASE <SSH目标> <磁盘>`。空公钥模板不能部署，也不能通过完整系统构建的登录安全断言。
+
+安装后登录 `ops@YOUR_SERVER`。root 和管理员密码均锁定，SSH 仅允许公钥，管理员拥有免密码 sudo。防火墙、fail2ban、chrony、qemu guest agent、zram、日志限额与定期 GC 默认启用。
+
+## 更新
 
 ```bash
-ssh ops@SERVER_IP
+# 默认临时 test，验证新的 SSH 会话后再持久化。
+nix run .#rebuild -- vps ops@YOUR_SERVER
+nix run .#rebuild -- vps ops@YOUR_SERVER --action switch
 
-# 后续变更先临时应用；确认第二个 SSH 会话、网络和服务正常后持久化。
-nix run .#rebuild -- vps ops@SERVER_IP
-nix run .#rebuild -- vps ops@SERVER_IP --action switch
+# 检查与构建；先填公钥。
+nix flake check --no-build
+nix build .#nixosConfigurations.vps.config.system.build.toplevel
+nix develop
+nix fmt
 ```
 
-## 更多说明
+Home Manager 随 NixOS 一起激活。系统工具放在 `modules/base/packages.nix`，用户软件放在 `home/base/`，主机差异放在 `home/hosts/vps.nix`。无需单独执行 `home-manager switch`。
 
-- [首次部署与 nixos-anywhere](docs/deployment.md)：端口、构建位置、硬件扫描、VM 检查与安装限制。
-- [主机定制](docs/customization.md)：静态 IPv4/IPv6、BIOS/UEFI、多主机与覆盖默认值。
-- [可选服务](docs/services.md)：Nginx/ACME、Podman 与密钥管理。
-- [Home Manager 与双软件源](docs/home-manager.md)：软件归属、程序配置、单独更新 unstable 与用户环境排错。
-- [日常运维](docs/operations.md)：升级、回滚、日志、空间与故障恢复。
+## 文档
 
-默认空公钥状态下，NixOS 的防锁定断言会阻止系统构建；部署脚本也会提前拒绝。CI 仅在临时工作区注入一次性测试公钥进行构建，测试密钥不会提交到仓库。使用前必须填写自己的公钥。
+- [配置与新增主机](docs/customization.md)
+- [nixos-anywhere 安装与远程更新](docs/deployment.md)
+- [Home Manager 与 stable/unstable 软件源](docs/home-manager.md)
+- [可选 Nginx / Podman](docs/services.md)
+- [检查、回滚、维护与故障排查](docs/operations.md)
 
-MIT License。
+GitHub Actions 检查部署脚本、空公钥拦截、所有 flake 输出，并实际构建 Home Manager 环境、VPS 系统与 disko 脚本。空模板在 CI 工作区临时注入生成的测试公钥，不会写回仓库或操作 VPS。

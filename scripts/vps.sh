@@ -76,11 +76,34 @@ git rev-parse --is-inside-work-tree >/dev/null 2>&1 || die "请在 Git 仓库中
   ".#nixosConfigurations.${host}.config.nixpkgs.hostPlatform.system")" == x86_64-linux ]] \
   || die "仅支持 x86_64-linux"
 
-metadata=$(nix eval --json --no-write-lock-file ".#nixosConfigurations.${host}.config.fleet")
-admin=$(jq -r '.access.adminUser' <<<"$metadata")
-disk=$(jq -r '.diskDevice' <<<"$metadata")
-boot_mode=$(jq -r '.bootMode' <<<"$metadata")
-final_port=$(jq -r '.access.sshPort' <<<"$metadata")
+# Read only public deployment metadata from native NixOS options.
+metadata=$(nix eval --json --no-write-lock-file \
+  ".#nixosConfigurations.${host}.config" --apply 'c: {
+    admins = c.services.openssh.settings.AllowUsers;
+    disks = builtins.mapAttrs (_: d: d.device) c.disko.devices.disk;
+    sshPorts = c.services.openssh.ports;
+    grub = c.boot.loader.grub.enable;
+    efi = c.boot.loader.grub.efiSupport;
+    bios = builtins.any (d: d != "nodev") c.boot.loader.grub.devices;
+    network = {
+      dns = c.networking.nameservers;
+      interfaces = builtins.mapAttrs (_: n: {
+        match = n.matchConfig.Name or "";
+        dhcp = n.networkConfig.DHCP or "no";
+        address = n.address;
+      }) c.systemd.network.networks;
+    };
+  }')
+jq -e '.grub and (.admins | length == 1) and (.disks | length == 1)
+       and (.sshPorts | length == 1) and (.efi or .bios)' \
+  <<<"$metadata" >/dev/null \
+  || die "部署入口要求一个管理员、一块 disko 磁盘、一个 SSH 端口和 GRUB"
+admin=$(jq -r '.admins[0]' <<<"$metadata")
+disk=$(jq -r '.disks[]' <<<"$metadata")
+final_port=$(jq -r '.sshPorts[0]' <<<"$metadata")
+boot_mode=$(jq -r 'if .efi and .bios then "hybrid" elif .efi then "uefi" else "bios" end' \
+  <<<"$metadata")
+[[ "$admin" =~ ^[a-z_][a-z0-9_-]*$ && "$admin" != root ]] || die "管理员名称无效"
 [[ "$disk" =~ ^/dev/[a-zA-Z0-9_./:-]+$ ]] || die "磁盘路径包含不支持的字符"
 
 keys=$(nix eval --json --no-write-lock-file \

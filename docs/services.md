@@ -1,59 +1,64 @@
 # 可选服务
 
-服务模块随 VPS baseline 导入，但 Nginx 和 Podman 默认关闭。具体域名、端口和应用属于 host 配置。
+默认只启用 VPS 所需服务。额外服务通过 `hosts/vps/default.nix` 的 `imports` 显式启用，再直接填写原生选项。
 
-## Nginx 与 ACME
+## Nginx 与 HTTPS
 
-在 `hosts/vps/default.nix` 添加：
+在现有 imports 加入：
 
 ```nix
-services.nginx = {
-  enable = true;
-  virtualHosts."app.example.com" = {
-    enableACME = true;
-    forceSSL = true;
-    locations."/" = {
-      proxyPass = "http://127.0.0.1:3000";
-      proxyWebsockets = true;
-    };
-  };
-};
+../../modules/nixos/nginx.nix
+```
+
+该模块启用 Nginx 推荐参数并开放 TCP 80/443。HTTPS 还需要在主机中配置：
+
+```nix
 security.acme = {
   acceptTerms = true;
   defaults.email = "you@example.com";
 };
+services.nginx.virtualHosts."example.com" = {
+  enableACME = true;
+  forceSSL = true;
+  locations."/" = {
+    proxyPass = "http://127.0.0.1:3000";
+    proxyWebsockets = true;
+  };
+};
 ```
 
-替换域名和邮箱；确保域名的 A/AAAA 记录指向 VPS，服务商允许 80/443。模块会开启 NixOS 的 80/443 防火墙端口，并设置 Nginx 的常用代理、TLS、压缩和性能配置。后端绑定 localhost，避免额外暴露应用端口。
-
-ACME 接受条款只在你明确启用并配置时设置，模板不会申请证书。
+替换域名/邮箱/后端，确保 DNS 指向服务器且服务商防火墙开放 80/443。ACME 密钥由系统在运行时生成，不进入 Git。
 
 ## Podman
 
+在 imports 加入：
+
 ```nix
-fleet.containers.enable = true;
+../../modules/nixos/containers.nix
 ```
 
-这会启用 Podman、Docker 兼容 CLI 和容器网络 DNS，但不会运行任何容器或公开 engine API。
-
-可在 host 中声明由 systemd 管理的容器：
+该模块启用 Podman、Docker 命令兼容和容器 DNS。系统容器可声明在主机配置：
 
 ```nix
 virtualisation.oci-containers = {
   backend = "podman";
-  containers.app = {
-    image = "docker.io/library/nginx:<已核对的版本或digest>";
+  containers.web = {
+    image = "docker.io/library/nginx:stable"; # 生产环境优先固定 digest
     ports = [ "127.0.0.1:8080:80" ];
   };
 };
 ```
 
-上面的 image 是需替换的占位值。应用配置推荐固定镜像 digest；OCI 镜像并不由 `flake.lock` 自动锁定。明确设置持久化卷、备份和资源限额，数据不能只保存在可替换的容器层。
+示例仅绑定本机，可由 Nginx 反代；公网服务需要明确配置监听地址、防火墙和认证。rootless Podman 使用账号的 subordinate UID/GID 范围，按 `podman info` 与实际应用检查。
 
-## 密钥
+## 凭据
 
-公开仓库只能存放公开的配置及公钥。不要提交私钥、密码、API token 或 ACME DNS 凭据。
+不要把密码、API token、私钥或容器环境文件写成 Nix 字符串，也不要用 `builtins.readFile` 将秘密复制进 Nix store。运行时文件放在受控目录中，例如：
 
-Nix 表达式中的字符串通常会进入全局可读的 Nix store，即使它们来自未提交的文件也不自动保密。生产密钥应通过运行时 root 专用文件、systemd credentials，或另外配置的 sops-nix/agenix 注入。本模板不生成密钥，也不内置示例 token。
+```nix
+virtualisation.oci-containers.containers.app.environmentFiles = [
+  "/var/lib/app/runtime.env"
+];
+```
 
-例如应用可使用 `environmentFile = "/var/lib/secrets/app.env";`，在部署前由你独立创建该文件并设置严格权限；不要使用 `pkgs.writeText` 创建明文密钥。
+运行时路径只是引用，不会自动创建文件。手工管理受限权限文件，或按需要接入 sops-nix/agenix；先准备凭据，再启动依赖它的服务。

@@ -1,94 +1,82 @@
-# 日常运维
+# 检查与运维
 
-## 修改与更新
+## 修改后检查
+
+先配置 SSH 公钥，新增文件先 `git add`：
+
+```bash
+nix run .#preflight -- vps
+nix flake check --no-build --no-write-lock-file
+nix build --no-write-lock-file .#checks.x86_64-linux.home
+nix build --no-write-lock-file \
+  .#nixosConfigurations.vps.config.system.build.toplevel \
+  .#nixosConfigurations.vps.config.system.build.diskoScript
+```
+
+开发环境提供 nixfmt、statix、deadnix、ShellCheck 和部署工具：
 
 ```bash
 nix develop
 nix fmt
-git add .
-nix flake check --no-build
-nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
-nix run .#rebuild -- vps ops@SERVER_IP --action test
-# 通过第二个 SSH 会话核对网络、sudo 和服务。
-nix run .#rebuild -- vps ops@SERVER_IP --action switch
+shellcheck scripts/vps.sh
 ```
 
-`test` 会实际临时应用配置，但不更新下次启动的默认 generation；`switch` 会应用并持久化；`boot` 只更新下次启动；`dry-activate` 只显示将执行的 activation 动作。修改网络仍可能中断 SSH，因此始终准备服务商控制台。
+CI 先检查部署包/脚本与空公钥拦截，再给未配置模板注入临时测试公钥。随后检查全部 flake 输出、构建用户环境并执行 nvim/git/fzf/bat/eza/rg/fd/btop，最后实际构建系统与分区脚本。临时私钥仅存在 CI runner 的工作区。
 
-部署脚本默认在本机构建，通过 SSH 复制到目标后用 sudo 激活。为接收本机构建且未签名的 closure，Nix 只信任 root 与已经拥有免密码 sudo 的配置管理员；不会信任所有普通用户或整个 wheel 组。若改用签名的部署 closure，可进一步缩小 trusted-users。
+这些检查验证配置与软件构建；实际网络、磁盘、固件和服务商限制仍需目标上的预检。CI 不连接或安装 VPS。
 
-直接命令对应：
-
-```bash
-nixos-rebuild test --flake .#vps --target-host ops@SERVER_IP --sudo
-nixos-rebuild switch --flake .#vps --target-host ops@SERVER_IP --sudo
-```
-
-Home Manager 已作为 NixOS 模块集成；上述重建会同时构建并激活配置管理员的用户环境，不需要另外执行 `home-manager switch`。用户环境说明见 [Home Manager 与双软件源](home-manager.md)。
-
-## 更新固定依赖
-
-```bash
-nix flake update
-git diff -- flake.lock
-nix flake check --no-build
-nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
-```
-
-只更新用户工具的 unstable 输入时，可使用 `nix flake update nixpkgs-unstable`，再完成同样的检查与 test/switch 流程。
-
-确认变更后提交 lockfile，再按 test/switch 流程应用。自动系统升级默认关闭，避免未经验证的网络或 SSH 变更。
-
-初始 lockfile 的 nixpkgs 与 disko 锁定记录取自上游
-[nixos-anywhere 的已提交 lockfile](https://github.com/nix-community/nixos-anywhere/blob/b6be7b277b468d55082584441cbef1fed8530eb3/flake.lock)，保留其真实 rev 与 narHash，作为初始系统输入。新增的 nixpkgs-unstable 与 Home Manager 由 Nix 生成并锁定；后续由 `nix flake update` 正常维护。
-
-## 回滚
-
-在远端已有 SSH 会话中：
-
-```bash
-sudo nixos-rebuild switch --rollback
-sudo nix-env --list-generations --profile /nix/var/nix/profiles/system
-```
-
-若 test 后失去连接，通过服务商控制台重启通常会进入此前持久化的 generation；若 switch 后失去连接，可从 GRUB 选择以前的 generation，或进入救援环境修复配置。默认用户密码已锁定，控制台本身不提供可用的 root 密码登录。
-
-自动 GC 会删除 14 天前的 generations；长期回滚窗口需要调整 `nix.gc.options` 或保留重要 closure。GC 不是数据备份。
-
-## 常用检查
+## 服务和网络
 
 ```bash
 systemctl --failed
 journalctl -b -p warning
-journalctl -u sshd -u fail2ban -u systemd-networkd -f
+systemctl status sshd fail2ban chronyd qemu-guest-agent
 networkctl status
 resolvectl status
+ip -br address
+ip route
 ss -tulpn
-df -h
-free -h
-zramctl
-sudo fail2ban-client status sshd
 sudo nft list ruleset
-sudo fstrim -av
+sudo fail2ban-client status sshd
 ```
 
-`fstrim` 依赖服务商暴露 discard 能力，不支持时可在 host 关闭 `services.fstrim.enable`。日志默认限额 256 MiB，coredump 默认不存储。
+SSH 被 fail2ban 封禁时通过服务商控制台检查日志，按需解除对应地址。确认 TCP 端口同时被 NixOS 防火墙和服务商防火墙允许。
 
-## 公钥丢失与救援
+Home Manager 失败：
 
-公钥及 root 密码默认由声明式配置管理，`users.mutableUsers = false`。不要依赖 `passwd` 临时更改后仍会永久保留。
+```bash
+systemctl status home-manager-ops.service
+journalctl -u home-manager-ops.service -b
+```
 
-若所有管理员私钥丢失，通过服务商救援镜像挂载根分区，修复仓库中的公钥，再使用 nixos-enter/rebuild 更新系统；或先在救援环境中临时修复 authorized_keys，恢复连接后立即同步声明式配置。具体设备和挂载方式须根据实际磁盘布局确定。
+管理员改名后相应替换服务名。查看 dotfile 冲突与 `.hm-backup`，整理备份后重新重建。
 
-## CI 覆盖
+## 更新与回滚
 
-GitHub Actions 在 x86_64 Linux 上执行：
+```bash
+# 本机仓库中更新锁文件，检查并提交后远程更新
+nix flake update nixpkgs-unstable
+nix run .#rebuild -- vps ops@YOUR_SERVER --action test
+nix run .#rebuild -- vps ops@YOUR_SERVER --action switch
+```
 
-- 在尚未填写公钥的模板上，先验证空公钥拒绝行为，再仅在 CI 临时工作区注入一次性测试公钥。
-- 所有 flake 输出与 NixOS assertions 的评估，保留防止管理员锁定的系统断言。
-- ShellCheck 与部署工具构建。
-- 命令帮助及空 SSH 公钥拒绝检查。
-- Home Manager activationPackage 的实际构建，以及 Neovim/Git/fzf 等用户程序的运行检查。
-- VPS system toplevel 与 diskoScript 的实际构建。
+远端紧急回滚：
 
-CI 不连接真实 VPS，不擦除磁盘，不验证服务商网络。应在实际部署前完成脚本的 `--dry-run`，必要时另做 `--vm-test`。
+```bash
+sudo nixos-rebuild switch --rollback
+```
+
+也可在服务商控制台从 GRUB 选择旧代际。已用 GC 清理的代际无法再回滚。修改网络、公钥、端口时先使用 `test`，保留控制台并验证第二个会话。
+
+自动 GC 每周删除 14 天之前的旧代际；GRUB 最多展示 10 个配置，journald 限额为持久日志 256 MiB、临时日志 64 MiB。zram 默认最多为内存的 50%，Nix 默认单个构建任务，适合小型 VPS，可在主机配置中覆盖。
+
+## 磁盘和备份
+
+```bash
+df -h
+du -sh /nix/store
+nix store optimise
+sudo systemctl status nix-gc.timer fstrim.timer
+```
+
+重新执行安装会擦盘。Git 只记录声明式配置；数据库、上传文件、运行时秘密、SSH host keys 等数据应另外备份，并实际验证恢复。不要在缺少可用回滚代际时随意清理全部旧系统。

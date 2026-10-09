@@ -31,7 +31,7 @@ jobs:
       - name: Verify CLI help and empty-key guard
         run: |
           nix run --no-write-lock-file .#install -- --help
-          if nix eval --json .#nixosConfigurations.vps.config.fleet.access.sshPublicKeys | jq -e 'length == 0'; then
+          if nix eval --json .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys' | jq -e 'length == 0'; then
             if nix run --no-write-lock-file .#preflight -- vps >preflight.log 2>&1; then
               echo "Empty SSH keys must never pass deployment preflight"
               exit 1
@@ -41,7 +41,7 @@ jobs:
           fi
       - name: Add an ephemeral CI-only public key if the template is unconfigured
         run: |
-          if nix eval --json .#nixosConfigurations.vps.config.fleet.access.sshPublicKeys | jq -e 'length == 0'; then
+          if nix eval --json .#nixosConfigurations.vps.config --apply 'c: c.users.users.${builtins.head c.services.openssh.settings.AllowUsers}.openssh.authorizedKeys.keys' | jq -e 'length == 0'; then
             mkdir -p work
             ssh-keygen -q -t ed25519 -N "" -f work/ci-key
             export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
@@ -49,11 +49,11 @@ jobs:
           import json
           import os
           from pathlib import Path
-          path = Path("hosts/vps/default.nix")
+          path = Path("vars/default.nix")
           source = path.read_text()
-          marker = "sshPublicKeys = [ ];"
+          marker = "sshKeys = [ ];"
           assert marker in source, "Update the CI fixture when changing the empty-key template"
-          source = source.replace(marker, "sshPublicKeys = [ " + json.dumps(os.environ["CI_SSH_PUBKEY"]) + " ];", 1)
+          source = source.replace(marker, "sshKeys = [ " + json.dumps(os.environ["CI_SSH_PUBKEY"]) + " ];", 1)
           path.write_text(source)
           PY
           fi
