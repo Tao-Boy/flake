@@ -13,7 +13,7 @@
 ## 部署入口
 
 ```bash
-nix run .#install -- vps root@<VPS地址> \
+nix run .#install -- vps root@SERVER_IP \
   --port 22 \
   --identity ~/.ssh/id_ed25519 \
   --build-on local \
@@ -25,7 +25,7 @@ nix run .#install -- vps root@<VPS地址> \
 | 参数 | 含义 |
 | --- | --- |
 | `vps` | `hosts/default.nix` 中登记的 flake 主机名称 |
-| `root@<VPS地址>` | 初始系统的 root SSH 目标，也可使用 SSH config 别名 |
+| `root@SERVER_IP` | 初始系统的 root SSH 目标，也可使用 SSH config 别名 |
 | `--port` | 初始系统当前的 SSH 端口；默认 22 |
 | `--identity` | 本机用于访问初始系统的私钥文件 |
 | `--build-on auto\|local\|remote` | nixos-anywhere 构建位置；默认 auto |
@@ -34,7 +34,7 @@ nix run .#install -- vps root@<VPS地址> \
 脚本会先验证最终配置中的每个 SSH 公钥，再评估 NixOS 的 toplevel 与 diskoScript，检查目标架构/root 权限/块设备/固件，显示磁盘和网络，最后要求在交互终端输入：
 
 ```text
-ERASE root@<VPS地址> /dev/vda
+ERASE root@SERVER_IP /dev/vda
 ```
 
 它不会确认公钥对应的私钥是否由你持有，也无法推断服务商的正确静态路由；部署前必须自行核对。
@@ -56,7 +56,7 @@ ERASE root@<VPS地址> /dev/vda
 ```bash
 nix run .#nixos-anywhere -- \
   --flake .#vps \
-  --target-host root@<VPS地址> \
+  --target-host root@SERVER_IP \
   --build-on local
 ```
 

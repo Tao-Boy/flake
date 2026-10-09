@@ -45,6 +45,8 @@
 
 ## 快速开始
 
+以下命令中的 `SERVER_IP` 请替换为你的 VPS 地址。
+
 本机需要 **x86_64 Linux + Nix**，并已启用 `nix-command flakes`。目标 VPS 需要 root SSH 访问、支持 kexec 的完整虚拟机；不适用于 OpenVZ/LXC。
 
 ```bash
@@ -74,23 +76,23 @@ nix flake check --no-build
 nix run .#preflight -- vps
 
 # 先核对服务商给出的主机指纹，并建立初始 SSH 连接。
-ssh root@<VPS地址>
+ssh root@SERVER_IP
 
 # 只读检查：公钥、配置、目标架构、磁盘与当前网络。
-nix run .#install -- vps root@<VPS地址> --dry-run
+nix run .#install -- vps root@SERVER_IP --dry-run
 
 # 首次安装：需要输入包含目标与磁盘的完整 ERASE 确认文字。
-nix run .#install -- vps root@<VPS地址>
+nix run .#install -- vps root@SERVER_IP
 ```
 
 安装后通过 `ops` 登录。若服务器 SSH 主机密钥发生变化，请通过服务商控制台核对新指纹后再更新本机 known_hosts。
 
 ```bash
-ssh ops@<VPS地址>
+ssh ops@SERVER_IP
 
 # 后续变更先临时应用；确认第二个 SSH 会话、网络和服务正常后持久化。
-nix run .#rebuild -- vps ops@<VPS地址>
-nix run .#rebuild -- vps ops@<VPS地址> --action switch
+nix run .#rebuild -- vps ops@SERVER_IP
+nix run .#rebuild -- vps ops@SERVER_IP --action switch
 ```
 
 ## 更多说明

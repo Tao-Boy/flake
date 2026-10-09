@@ -57,6 +57,8 @@ jobs:
           fi
       - name: Evaluate every flake output and NixOS assertion
         run: nix flake check --no-build --no-write-lock-file --show-trace
+      - name: Verify preflight accepts a configured public key
+        run: nix run --no-write-lock-file .#preflight -- vps
       - name: Build the VPS system and disk provisioning script
         run: |
           nix build --no-link --no-write-lock-file --print-build-logs \

@@ -95,9 +95,9 @@ fleet.access.sshPort = 2222;
 模块会同步更新 NixOS 防火墙与 fail2ban。修改服务商侧防火墙后，日常更新仍用旧端口连接：
 
 ```bash
-nix run .#rebuild -- vps ops@<VPS地址> --port 22 --action test
-ssh -p 2222 ops@<VPS地址>
-nix run .#rebuild -- vps ops@<VPS地址> --port 2222 --action switch
+nix run .#rebuild -- vps ops@SERVER_IP --port 22 --action test
+ssh -p 2222 ops@SERVER_IP
+nix run .#rebuild -- vps ops@SERVER_IP --port 2222 --action switch
 ```
 
 单纯换端口不能替代公钥登录与权限控制。更换公钥时保留旧公钥，验证新连接后再移除旧公钥。

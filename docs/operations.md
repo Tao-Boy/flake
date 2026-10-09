@@ -8,9 +8,9 @@ nix fmt
 git add .
 nix flake check --no-build
 nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
-nix run .#rebuild -- vps ops@<VPS地址> --action test
+nix run .#rebuild -- vps ops@SERVER_IP --action test
 # 通过第二个 SSH 会话核对网络、sudo 和服务。
-nix run .#rebuild -- vps ops@<VPS地址> --action switch
+nix run .#rebuild -- vps ops@SERVER_IP --action switch
 ```
 
 `test` 会实际临时应用配置，但不更新下次启动的默认 generation；`switch` 会应用并持久化；`boot` 只更新下次启动；`dry-activate` 只显示将执行的 activation 动作。修改网络仍可能中断 SSH，因此始终准备服务商控制台。
@@ -20,8 +20,8 @@ nix run .#rebuild -- vps ops@<VPS地址> --action switch
 直接命令对应：
 
 ```bash
-nixos-rebuild test --flake .#vps --target-host ops@<VPS地址> --sudo
-nixos-rebuild switch --flake .#vps --target-host ops@<VPS地址> --sudo
+nixos-rebuild test --flake .#vps --target-host ops@SERVER_IP --sudo
+nixos-rebuild switch --flake .#vps --target-host ops@SERVER_IP --sudo
 ```
 
 ## 更新固定依赖

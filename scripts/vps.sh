@@ -42,7 +42,7 @@ fi
 port=""
 identity=""
 build_on=auto
-action=test
+action="test"
 dry_run=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -126,7 +126,8 @@ if [[ "$command" == install ]]; then
   ssh "${ssh_options[@]}" "$target" \
     'test "$(uname -m)" = x86_64 && test "$(id -u)" = 0' \
     || die "首次安装需要 x86_64 目标上的 root SSH 权限"
-  ssh "${ssh_options[@]}" "$target" "test -b '$disk'" \
+  printf '%s\\n' "$disk" | ssh "${ssh_options[@]}" "$target" \
+    'IFS= read -r disk; test -b "$disk"' \
     || die "目标磁盘不存在或不是块设备"
   firmware=$(ssh "${ssh_options[@]}" "$target" \
     'if test -d /sys/firmware/efi; then echo uefi; else echo bios; fi')
