@@ -21,6 +21,14 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           determinate: false
+      - name: Resolve and report new lockfile inputs
+        run: |
+          nix flake lock
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          print("LOCKFILE_JSON=" + json.dumps(json.loads(Path("flake.lock").read_text()), separators=(",", ":")))
+          PY
       - name: Check shell and build deployment tools
         run: |
           nix build --no-link --no-write-lock-file \
@@ -61,6 +69,18 @@ jobs:
         run: nix flake check --no-build --no-write-lock-file --show-trace
       - name: Verify preflight accepts a configured public key
         run: nix run --no-write-lock-file .#preflight -- vps
+      - name: Build and smoke-test the Home Manager user environment
+        run: |
+          nix build --no-write-lock-file --print-build-logs \
+            --out-link work/home-activation .#checks.x86_64-linux.home
+          work/home-activation/home-path/bin/nvim --headless -u NONE -i NONE '+qa'
+          work/home-activation/home-path/bin/git --version
+          work/home-activation/home-path/bin/fzf --version
+          work/home-activation/home-path/bin/bat --version
+          work/home-activation/home-path/bin/eza --version
+          work/home-activation/home-path/bin/rg --version
+          work/home-activation/home-path/bin/fd --version
+          work/home-activation/home-path/bin/btop --version
       - name: Build the VPS system and disk provisioning script
         run: |
           nix build --no-link --no-write-lock-file --print-build-logs \

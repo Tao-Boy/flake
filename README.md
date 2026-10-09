@@ -1,6 +1,6 @@
 # flake
 
-用于 **x86_64 KVM/QEMU VPS** 的模块化 NixOS flake。以 NixOS **26.05** 为基础，使用 **disko** 声明磁盘布局，使用 **nixos-anywhere** 首次安装，以 **nixos-rebuild** 进行后续更新。
+用于 **x86_64 KVM/QEMU VPS** 的模块化 NixOS flake。以 NixOS **26.05** 为基础，使用独立的 **nixpkgs-unstable** 提供精选新版本工具，通过 **Home Manager** 管理用户软件和 dotfiles，使用 **disko** 声明磁盘布局，使用 **nixos-anywhere** 首次安装，以 **nixos-rebuild** 进行后续更新。
 
 > 这是需要填写主机参数的模板。默认 SSH 公钥列表为空，部署脚本会拒绝安装。首次安装会清空指定磁盘，请先备份，并准备服务商的救援环境/控制台。
 
@@ -9,7 +9,7 @@
 ```text
 .
 ├── flake.nix                    # 输入、主机生成、部署工具、开发环境和检查
-├── flake.lock                   # 固定 nixpkgs 与 disko；部署工具来自同一 nixpkgs
+├── flake.lock                   # 固定 stable/unstable、Home Manager 与 disko
 ├── hosts/
 │   ├── default.nix              # 主机清单；新增主机只需登记一次
 │   └── vps/
@@ -19,10 +19,12 @@
 ├── modules/
 │   ├── options.nix             # fleet.* 接口、类型及校验
 │   ├── access.nix              # 管理用户、SSH、sudo、fail2ban
+│   ├── home-manager.nix        # 将 Home Manager 接入配置管理员
 │   ├── networking.nix          # networkd、resolved、nftables 防火墙
 │   ├── storage.nix             # disko 分区与 GRUB，唯一的文件系统来源
 │   ├── system/                 # 基础系统、Nix、CLI、日常维护
 │   └── services/               # 按需启用 Nginx 与 Podman
+├── home/                       # 用户软件清单、Bash、Git、Neovim、tmux 配置
 ├── scripts/vps.sh              # 预检、首次安装、日常更新共用入口
 ├── docs/                       # 部署、定制、服务与运维说明
 └── .github/workflows/ci.yml     # 评估、脚本检查、工具与系统构建
@@ -39,7 +41,9 @@
 | 登录 | `ops` 用户、公钥登录、关闭 root/密码登录、管理员免密码 sudo |
 | 网络 | systemd-networkd、DHCP、IPv6 RA、resolved、nftables；默认只放行 SSH |
 | 防护与维护 | fail2ban、zram、fstrim、日志容量限制、每周清理 14 天前的 generations |
-| CLI | neovim、git、curl、wget、jq/yq、ripgrep、fd、fzf、bat、eza、tmux、htop/btop、ncdu、rsync、mtr、tcpdump、strace 等 |
+| 系统工具 | 稳定源的 SSH、sudo、util-linux、iproute2、DNS 查询、硬件诊断与 nixos-rebuild |
+| 用户环境 | Home Manager 管理 Bash、Git、Neovim、tmux、curl、jq/yq、归档、监控及可选诊断工具 |
+| unstable 工具 | Neovim、Git、fzf、bat、eza、ripgrep、fd、btop；其他用户工具默认稳定源 |
 | 服务 | 可选 Nginx HTTPS 反向代理、Podman；默认关闭 |
 | 部署 | 固定版本的 nixos-anywhere、SSH 公钥校验、只读远端预检、擦盘确认、默认 `test` 更新 |
 
@@ -100,6 +104,7 @@ nix run .#rebuild -- vps ops@SERVER_IP --action switch
 - [首次部署与 nixos-anywhere](docs/deployment.md)：端口、构建位置、硬件扫描、VM 检查与安装限制。
 - [主机定制](docs/customization.md)：静态 IPv4/IPv6、BIOS/UEFI、多主机与覆盖默认值。
 - [可选服务](docs/services.md)：Nginx/ACME、Podman 与密钥管理。
+- [Home Manager 与双软件源](docs/home-manager.md)：软件归属、程序配置、单独更新 unstable 与用户环境排错。
 - [日常运维](docs/operations.md)：升级、回滚、日志、空间与故障恢复。
 
 默认空公钥状态下，NixOS 的防锁定断言会阻止系统构建；部署脚本也会提前拒绝。CI 仅在临时工作区注入一次性测试公钥进行构建，测试密钥不会提交到仓库。使用前必须填写自己的公钥。

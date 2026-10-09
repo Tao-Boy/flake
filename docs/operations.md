@@ -24,6 +24,8 @@ nixos-rebuild test --flake .#vps --target-host ops@SERVER_IP --sudo
 nixos-rebuild switch --flake .#vps --target-host ops@SERVER_IP --sudo
 ```
 
+Home Manager 已作为 NixOS 模块集成；上述重建会同时构建并激活配置管理员的用户环境，不需要另外执行 `home-manager switch`。用户环境说明见 [Home Manager 与双软件源](home-manager.md)。
+
 ## 更新固定依赖
 
 ```bash
@@ -33,10 +35,12 @@ nix flake check --no-build
 nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
 ```
 
+只更新用户工具的 unstable 输入时，可使用 `nix flake update nixpkgs-unstable`，再完成同样的检查与 test/switch 流程。
+
 确认变更后提交 lockfile，再按 test/switch 流程应用。自动系统升级默认关闭，避免未经验证的网络或 SSH 变更。
 
 初始 lockfile 的 nixpkgs 与 disko 锁定记录取自上游
-[nixos-anywhere 的已提交 lockfile](https://github.com/nix-community/nixos-anywhere/blob/b6be7b277b468d55082584441cbef1fed8530eb3/flake.lock)，保留其真实 rev 与 narHash，并裁剪为本仓库的两项输入。后续由 `nix flake update` 正常维护。
+[nixos-anywhere 的已提交 lockfile](https://github.com/nix-community/nixos-anywhere/blob/b6be7b277b468d55082584441cbef1fed8530eb3/flake.lock)，保留其真实 rev 与 narHash，作为初始系统输入。新增的 nixpkgs-unstable 与 Home Manager 由 Nix 生成并锁定；后续由 `nix flake update` 正常维护。
 
 ## 回滚
 
@@ -84,6 +88,7 @@ GitHub Actions 在 x86_64 Linux 上执行：
 - 所有 flake 输出与 NixOS assertions 的评估，保留防止管理员锁定的系统断言。
 - ShellCheck 与部署工具构建。
 - 命令帮助及空 SSH 公钥拒绝检查。
+- Home Manager activationPackage 的实际构建，以及 Neovim/Git/fzf 等用户程序的运行检查。
 - VPS system toplevel 与 diskoScript 的实际构建。
 
 CI 不连接真实 VPS，不擦除磁盘，不验证服务商网络。应在实际部署前完成脚本的 `--dry-run`，必要时另做 `--vm-test`。

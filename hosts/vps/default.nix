@@ -29,6 +29,8 @@
   # Set when FIRST installing this host; do not bump merely to upgrade nixpkgs.
   system.stateVersion = "26.05";
 
+  # User tools and dotfiles are managed in ../../home/ via Home Manager.
+
   # Optional Podman:
   # fleet.containers.enable = true;
   #

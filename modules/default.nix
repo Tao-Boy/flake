@@ -8,6 +8,7 @@
     ./system/maintenance.nix
     ./networking.nix
     ./access.nix
+    ./home-manager.nix
     ./storage.nix
     ./services/nginx.nix
     ./services/containers.nix

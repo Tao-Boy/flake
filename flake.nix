@@ -3,22 +3,31 @@
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+    nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    home-manager = {
+      url = "github:nix-community/home-manager/release-26.05";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
     disko = {
       url = "github:nix-community/disko/master";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
 
-  outputs = { self, nixpkgs, disko, ... }:
+  outputs = { self, nixpkgs, nixpkgs-unstable, home-manager, disko, ... }:
     let
       system = "x86_64-linux";
       pkgs = nixpkgs.legacyPackages.${system};
+      # An independent package set: the NixOS base is never overlaid with unstable.
+      pkgsUnstable = nixpkgs-unstable.legacyPackages.${system};
       lib = nixpkgs.lib;
       hosts = import ./hosts;
       mkHost = name: hostModule: lib.nixosSystem {
         inherit system;
+        specialArgs = { inherit pkgsUnstable; };
         modules = [
           disko.nixosModules.disko
+          home-manager.nixosModules.home-manager
           ./modules
           hostModule
           { networking.hostName = lib.mkDefault name; }
@@ -64,6 +73,9 @@
       };
 
       checks.${system} = {
+        home =
+          let c = self.nixosConfigurations.vps.config;
+          in c.home-manager.users.${c.fleet.access.adminUser}.home.activationPackage;
         shell = pkgs.runCommand "shellcheck" { nativeBuildInputs = [ pkgs.shellcheck ]; } ''
           shellcheck ${./scripts/vps.sh}
           touch $out

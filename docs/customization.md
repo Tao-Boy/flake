@@ -86,6 +86,12 @@ services.qemuGuest.enable = false; # 服务商不提供 guest-agent 通道时可
 
 `system.stateVersion` 记录初次安装时的状态兼容版本，升级输入时不要自动递增。增加到已有 NixOS 主机时，应保留它原先的 stateVersion。
 
+## 用户软件与 dotfiles
+
+用户软件安装和 Bash/Git/Neovim/tmux 配置放在 `home/`，不要再添加到 `environment.systemPackages`。稳定源使用 `pkgs`，精选新版本使用 `pkgsUnstable`；详见 [Home Manager 与双软件源](home-manager.md)。
+
+`fleet.access.adminUser` 决定 Home Manager 管理的账户，用户名与 home 目录自动继承 NixOS 账户，不硬编码为 `ops`。可以在主机配置中用 `home-manager.users.<用户名>` 覆盖或补充主机专用用户设置。
+
 ## SSH 端口
 
 ```nix
