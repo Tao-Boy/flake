@@ -21,14 +21,6 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           determinate: false
-      - name: Resolve and report new lockfile inputs
-        run: |
-          nix flake lock
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          print("LOCKFILE_JSON=" + json.dumps(json.loads(Path("flake.lock").read_text()), separators=(",", ":")))
-          PY
       - name: Check shell and build deployment tools
         run: |
           nix build --no-link --no-write-lock-file \
