@@ -27,7 +27,7 @@ inputs.nixpkgs.lib.nixosSystem {
           pkgsUnstable = inputs.nixpkgs-unstable.legacyPackages."x86_64-linux";
         };
 
-        # ${myvars.username} 将用户名作为属性名，例如 users.ops。
+        # ${myvars.username} 将用户名作为属性名，例如 users.tau。
         users.${myvars.username} = import homeModule;
       };
     }

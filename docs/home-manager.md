@@ -49,12 +49,12 @@ OpenSSH、sudo、iproute2、iputils、util-linux 与 nixos-rebuild 由 NixOS 自
 
 ```bash
 nix develop
-nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 # 另开 SSH 会话验证
-nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-Home Manager 使用 `useUserPackages = true`，软件通过 NixOS 的用户 profile 提供。配置碰到已有 dotfile 时保留 `.hm-backup` 备份；如有冲突，检查对应 `home-manager-ops.service` 的日志和已有备份。
+Home Manager 使用 `useUserPackages = true`，软件通过 NixOS 的用户 profile 提供。配置碰到已有 dotfile 时保留 `.hm-backup` 备份；如有冲突，检查对应 `home-manager-tau.service` 的日志和已有备份。
 
 `home.stateVersion` 与 `system.stateVersion` 保持 `26.05`。这两个值控制兼容行为，不随包版本更新自动修改。更改管理员用户名会涉及账号、家目录和数据迁移，不能只重命名配置变量就假定数据已经迁移。
 

@@ -47,8 +47,8 @@ SSH 被 fail2ban 封禁时通过服务商控制台检查日志，按需解除对
 Home Manager 失败：
 
 ```bash
-systemctl status home-manager-ops.service
-journalctl -u home-manager-ops.service -b
+systemctl status home-manager-tau.service
+journalctl -u home-manager-tau.service -b
 ```
 
 管理员改名后相应替换服务名。查看 dotfile 冲突与 `.hm-backup`，整理备份后重新重建。
@@ -59,8 +59,8 @@ journalctl -u home-manager-ops.service -b
 # 本机仓库中更新锁文件，检查并提交后远程更新
 nix flake update nixpkgs-unstable
 nix develop
-nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
-nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
 远端紧急回滚：

@@ -51,7 +51,7 @@ nix run .#nixos-anywhere -- --flake .#vps --target-host root@YOUR_SERVER
 安装完成后使用配置中的管理员和端口登录：
 
 ```bash
-ssh ops@YOUR_SERVER
+ssh tau@YOUR_SERVER
 ```
 
 新系统的 SSH 主机密钥自动生成在 `/nix/var/lib/sshd`，日常重启会保留指纹。重装擦盘后会生成新密钥；核验新的指纹后再更新 known_hosts。服务商的磁盘、网络和固件要求应在安装前确认。
@@ -66,9 +66,9 @@ nix run .#nixos-anywhere -- --flake .#vps --vm-test
 
 ```bash
 nix develop
-nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 # 用第二个 SSH 会话验证，再持久化
-nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
 `test` 临时激活；`switch` 同时更新启动默认配置；`boot` 仅更新下次启动。管理员通过免密码 sudo 激活系统，Home Manager 同步更新。系统代际保留在 `/nix`，启动文件保留在 `/boot`，因此 tmpfs 根不会丢失已 `switch` 的系统配置。手工编辑 `/etc` 或向 `/var` 写入数据则不会跨重启保留。
@@ -78,7 +78,7 @@ nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
 ```sshconfig
 Host my-vps
   HostName YOUR_SERVER
-  User ops
+  User tau
   Port 22
   IdentityFile ~/.ssh/id_ed25519
 ```

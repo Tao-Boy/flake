@@ -51,7 +51,7 @@ virtualisation.oci-containers = {
 
 示例仅绑定本机，可由 Nginx 反代；公网服务需要明确配置监听地址、防火墙和认证。rootless Podman 使用账号的 subordinate UID/GID 范围，按 `podman info` 与实际应用检查。
 
-rootless Podman 默认数据位于持久 `/home`；rootful Podman 和上面的系统容器默认在 `/var/lib/containers` 保存镜像和卷，会随重启清空。数据库、上传文件等容器数据请显式绑定持久目录，例如 `/home/ops/app-data:/data`，并设置符合容器 UID/GID 的文件权限。需要保留 rootful 镜像或其他运行状态时，另行配置其持久路径。
+rootless Podman 默认数据位于持久 `/home`；rootful Podman 和上面的系统容器默认在 `/var/lib/containers` 保存镜像和卷，会随重启清空。数据库、上传文件等容器数据请显式绑定持久目录，例如 `/home/tau/app-data:/data`，并设置符合容器 UID/GID 的文件权限。需要保留 rootful 镜像或其他运行状态时，另行配置其持久路径。
 
 ## 凭据
 
@@ -59,10 +59,10 @@ rootless Podman 默认数据位于持久 `/home`；rootful Podman 和上面的�
 
 ```nix
 virtualisation.oci-containers.containers.app.environmentFiles = [
-  "/home/ops/.config/app/runtime.env"
+  "/home/tau/.config/app/runtime.env"
 ];
 ```
 
-将 `ops` 替换为实际用户名，文件权限设为仅账号或服务可读（例如 `0600`）。`/home` 持久化，默认 `/var` 中的秘密会在重启后丢失。
+将 `tau` 替换为实际用户名，文件权限设为仅账号或服务可读（例如 `0600`）。`/home` 持久化，默认 `/var` 中的秘密会在重启后丢失。
 
 运行时路径只是引用，不会自动创建文件。手工管理受限权限文件，或按需要接入 sops-nix/agenix；先准备凭据，再启动依赖它的服务。

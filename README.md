@@ -43,14 +43,14 @@ cd flake
 
 先改三个位置：
 
-1. `vars/default.nix`：填入完整 SSH 公钥，按需修改管理员 `ops`。
+1. `vars/default.nix`：填入完整 SSH 公钥，按需修改管理员 `tau`。
 2. `hosts/vps/disk-config.nix`：核对整块磁盘，默认 `/dev/vda`。
 3. `hosts/vps/default.nix`：核对网卡和地址，默认 DHCP + IPv6 RA。
 
 ```nix
 # vars/default.nix
 {
-  username = "ops";
+  username = "tau";
   sshKeys = [
     "ssh-ed25519 AAAA...你的完整公钥... you@laptop"
   ];
@@ -99,9 +99,9 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 
 ```bash
 nix develop
-nixos-rebuild test --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 # 用另一个 SSH 会话验证后持久化
-nixos-rebuild switch --flake .#vps --target-host ops@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
 Home Manager 随系统一起激活。额外系统工具写在 `modules/base/packages.nix`，用户软件写在 `home/base/tools.nix`，主机差异写在 `home/hosts/vps.nix`。
