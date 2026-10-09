@@ -24,6 +24,9 @@
       };
     };
     programs.tmux.enable = true;
-    environment.variables.EDITOR = lib.mkDefault "nvim";
+    programs.neovim = {
+      enable = true;
+      defaultEditor = lib.mkDefault true;
+    };
   };
 }

@@ -55,9 +55,9 @@
         default = install;
       };
       apps.${system} = {
-        install = { type = "app"; program = "${install}/bin/vps-install"; };
-        rebuild = { type = "app"; program = "${rebuild}/bin/vps-rebuild"; };
-        preflight = { type = "app"; program = "${preflight}/bin/vps-preflight"; };
+        install = { type = "app"; program = "${install}/bin/vps-install"; meta.description = "Install a VPS using nixos-anywhere with preflight and disk confirmation"; };
+        rebuild = { type = "app"; program = "${rebuild}/bin/vps-rebuild"; meta.description = "Update a VPS using nixos-rebuild"; };
+        preflight = { type = "app"; program = "${preflight}/bin/vps-preflight"; meta.description = "Validate a VPS configuration and its SSH public keys"; };
       };
       devShells.${system}.default = pkgs.mkShell {
         packages = scriptTools ++ (with pkgs; [ nixfmt statix deadnix shellcheck ]);
