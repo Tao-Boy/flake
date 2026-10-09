@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
+      - name: Evaluate every flake output and NixOS assertion
+        run: nix flake check --no-build --no-write-lock-file --show-trace
+      - name: Check shell and build deployment tools
+        run: |
+          nix build --no-link --no-write-lock-file \
+            .#checks.x86_64-linux.shell \
+            .#packages.x86_64-linux.install \
+            .#packages.x86_64-linux.rebuild \
+            .#packages.x86_64-linux.preflight
+      - name: Verify CLI help and empty-key guard
+        run: |
+          nix run --no-write-lock-file .#install -- --help
+          if nix eval --json .#nixosConfigurations.vps.config.fleet.access.sshPublicKeys | jq -e 'length == 0'; then
+            if nix run --no-write-lock-file .#preflight -- vps >preflight.log 2>&1; then
+              echo "Empty SSH keys must never pass deployment preflight"
+              exit 1
+            fi
+            cat preflight.log
+            rg '必须配置至少一个完整的 SSH 公钥' preflight.log
+          fi
+      - name: Build the VPS system and disk provisioning script
+        run: |
+          nix build --no-link --no-write-lock-file --print-build-logs \
+            .#nixosConfigurations.vps.config.system.build.toplevel \
+            .#nixosConfigurations.vps.config.system.build.diskoScript

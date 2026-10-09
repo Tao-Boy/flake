@@ -1,0 +1,10 @@
+/result
+/result-*
+/.direnv/
+/work/
+*.qcow2
+*.raw
+*.pem
+*.key
+.env
+.env.*
