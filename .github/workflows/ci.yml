@@ -59,6 +59,8 @@ jobs:
           {
             # The test uses a shared 9p store; keep ownership changes in the VPS only.
             disko.tests.extraConfig.nix.settings.build-users-group = lib.mkForce "";
+            # Disko borrows /nix/store without registering its closure in the guest DB.
+            disko.tests.extraConfig.home-manager.users.${myvars.username}.home.activationGenerateGcRoot = lib.mkForce false;
             disko.tests.extraChecks = ''
               machine.wait_for_unit("sshd.service")
               machine.wait_for_unit("home-manager-${myvars.username}.service")
