@@ -7,21 +7,21 @@
 | 目录或文件 | 职责 |
 | --- | --- |
 | `flake.nix`、`flake.lock` | 声明并锁定输入 |
-| `machines/default.nix` | 机器清单，关联系统和用户差异，生成每台机器的构建检查 |
+| `machines/default.nix` | 机器清单，指定系统入口和用户软件选择入口 |
 | `machines/vps/default.nix` | 本地配置入口、时区和系统兼容版本 |
 | `machines/vps/hardware-configuration.nix` | 用户管理的硬件配置，可选择由安装器生成 |
 | `machines/vps/storage.nix` | 选择存储布局、明确指定待安装的整块磁盘 |
 | `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
 | `modules/home.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
 | `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
-| `home/default.nix` | 组合共享用户环境 |
+| `home/default.nix` | 公共 Home Manager 兼容设置 |
 | `home/shell/`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
-| `home/machines/vps.nix` | 该机器的用户环境差异 |
-| `lib/`、`outputs/` | 系统构造和 flake 输出组装 |
+| `machines/vps/home.nix` | 选择该机器启用的用户软件模块 |
+| `outputs/default.nix` | 系统、安装器、格式化器和开发环境输出 |
 | `users.nix` | 管理员身份与 SSH 公钥 |
-| `tests/`、`docs/` | 检查、安装重启测试与使用文档 |
+| `docs/` | 定制、部署与运维说明 |
 
-系统构造器加载机器入口，由本地配置文件继续导入系统、存储和用户环境。仓库不使用 `profiles/`、硬件报告检测或独立 shell 包装脚本。结构参考 [Misterio77/nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)、[ryan4yin/nix-config](https://github.com/ryan4yin/nix-config) 和 [hlissner/dotfiles](https://github.com/hlissner/dotfiles)，保留显式 imports 与原生 NixOS / Home Manager 选项。详细理由见[结构说明](docs/architecture.md)。
+软件如何配置写在 `home/`，机器是否使用该软件写在 `machines/<name>/home.nix`。系统与用户配置通过本地文件显式导入，结构与参考项目见[结构说明](docs/architecture.md)。
 
 ## 最小配置与安装
 
@@ -82,7 +82,7 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-完整检查包含系统、Home Manager、disko、格式 / 静态检查，以及需要 Linux KVM 的安装重启测试。CI 为尚未填写公钥的模板生成临时公钥，只用于测试工作区。
+CI 直接执行格式 / 静态检查、NixOS 求值、系统与 disko 脚本构建；Home Manager 随系统构建。仓库不保留测试目录或自定义 checks 输出。空公钥模板仅在 CI 工作区临时填入生成的公钥。
 
 - [目录设计与迁移](docs/architecture.md)
 - [定制与新增机器](docs/customization.md)

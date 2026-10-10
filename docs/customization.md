@@ -14,7 +14,7 @@ zramSwap.memoryPercent = 25;
 nix.settings.max-jobs = 2;
 ```
 
-共享系统配置在 `modules/nixos/`，共享用户配置在 `home/`。单台机器的系统设置放在 `machines/<name>/`，用户差异放在 `home/machines/<name>.nix`。包仍以完整的 `pkgs.xxx` 或 `pkgsUnstable.xxx` 声明。
+共享系统配置在 `modules/nixos/`，全部用户软件配置在 `home/`。机器的系统差异和软件选择均放在 `machines/<name>/`，用户模块由其中的 `home.nix` 选择。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
 
 ## 硬件配置与网络
 
@@ -57,17 +57,17 @@ systemd.network.networks."10-uplink" = {
 
 ## 新增机器
 
-复制 `machines/vps/` 为 `machines/edge/`，另复制 `home/machines/vps.nix` 为 `home/machines/edge.nix`。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
+复制 `machines/vps/` 为 `machines/edge/`，在 `home.nix` 中调整软件模块的 imports。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
 
 ```nix
 edge = {
   system = "x86_64-linux";
   module = ./edge;
-  home = ../home/machines/edge.nix;
+  home = ./edge/home.nix;
 };
 ```
 
-无需复制 outputs 或系统构造代码。每台机器的 `home-edge`、`system-edge`、`disk-edge` 构建检查自动生成，CI 执行全部检查。当前共享 VPS 布局与部署工具只验证 x86_64 Linux；添加其他架构需要适配启动布局和验证环境。
+机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统和 disko 脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
 
 ```bash
 git add machines home
@@ -76,4 +76,4 @@ nix run .#install -- --flake .#edge --target-host root@YOUR_SERVER \
   --generate-hardware-config nixos-generate-config ./machines/edge/hardware-configuration.nix
 ```
 
-上面的安装会清空配置指定的磁盘。现有机器的 `vps` 持久化回归测试单独保留；新机器的专有存储 / 服务测试可在 `tests/` 中增加。
+上面的安装会清空配置指定的磁盘。已安装机器使用 `nixos-rebuild test` / `switch` 更新。

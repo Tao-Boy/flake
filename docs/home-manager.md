@@ -1,48 +1,41 @@
-# 用户环境与双软件源
+# 用户软件配置
 
-NixOS 管理系统服务、账号和系统工具；Home Manager 管理交互式软件与 dotfiles，随 NixOS 重建激活。没有独立的用户 flake 或第二份软件列表。
-
-## 配置位置
+所有用户软件和 dotfiles 均放在 `home/`，由 Home Manager 随 NixOS 重建激活。机器只选择启用哪些模块。
 
 | 内容 | 位置 |
 | --- | --- |
-| 系统诊断工具 | `modules/nixos/core/packages.nix` |
+| 公共兼容版本 | `home/default.nix` |
 | Bash、fzf、bat、eza | `home/shell/default.nix` |
 | 文件、下载、归档工具 | `home/cli/utilities.nix` |
-| 进程、磁盘和性能诊断 | `home/cli/diagnostics.nix` |
+| 进程、磁盘、硬件诊断工具 | `home/cli/diagnostics.nix` |
 | 网络诊断工具 | `home/cli/network.nix` |
 | Git、Neovim、tmux | `home/programs/` |
-| 共享用户环境组合 | `home/default.nix` |
-| 本机用户差异 | `home/machines/vps.nix` |
+| 每台机器的软件选择 | `machines/<name>/home.nix` |
 | Home Manager 接入 | `modules/home.nix` |
 
-添加本机工具或作者信息：
+新增软件时，先在 `home/` 编写配置，例如：
 
 ```nix
-# home/machines/vps.nix
-{ pkgs, pkgsUnstable, ... }:
+# home/programs/sqlite.nix
+{ pkgs, ... }:
 {
-  home.packages = [ pkgs.sqlite pkgsUnstable.just ];
-  programs.git.settings.user = {
-    name = "Your Name";
-    email = "you@example.com";
-  };
+  home.packages = [ pkgs.sqlite ];
 }
 ```
 
-## 软件源
+再在需要该软件的 `machines/<name>/home.nix` 的 imports 中加入 `../../home/programs/sqlite.nix`。取消导入即可改变该机器的软件选择，共享软件文件保持独立。
 
-系统与基础工具使用 `nixos-26.05`；Home Manager 使用匹配的 `release-26.05`。`useGlobalPkgs = true` 让用户环境沿用系统稳定包集；`pkgsUnstable` 单独传入，不全局覆盖包集。
+Git 作者信息统一写入 `home/programs/git.nix` 的 `programs.git.settings.user`，其他程序的选项也放在对应软件文件。
 
-stable 包以 `pkgs.xxx` 声明。Git、Neovim、fzf、bat、eza、ripgrep、fd、btop 显式选择 `pkgsUnstable.xxx`；其他原有工具保持 stable。已启用的 `programs.*` 模块负责安装软件，不再重复写入 `home.packages`。
+## 软件源与兼容版本
+
+系统和基础工具使用 `nixos-26.05`，Home Manager 使用匹配的 `release-26.05`。用户环境沿用系统包集；`pkgsUnstable` 作为独立参数传入，不全局替换包集。
+
+stable 包使用 `pkgs.xxx`；Git、Neovim、fzf、bat、eza、ripgrep、fd、btop 使用 `pkgsUnstable.xxx`。`programs.*` 模块负责安装已启用的软件，避免在 `home.packages` 重复声明。
 
 ```bash
 nix flake update nixpkgs-unstable
 nix flake update nixpkgs home-manager
-# 或主动更新全部输入
-nix flake update
 ```
 
-审查锁文件，运行检查与构建，再进行远程 `test` / `switch`。使用 unstable 也只会在主动更新锁文件后改变版本。本次重构不更新现有锁定输入。
-
-`home.stateVersion` 和 `system.stateVersion` 仍为 `26.05`，不随软件版本升级改变。Home Manager 的冲突 dotfile 备份为 `.hm-backup`；出现冲突时检查 `home-manager-tau.service` 日志和已有备份。
+版本只在主动更新锁文件后改变。`home.stateVersion` 与 `system.stateVersion` 保持 `26.05`，不随软件版本升级。冲突 dotfile 备份为 `.hm-backup`；遇到冲突时检查 `home-manager-tau.service` 日志和已有备份。

@@ -6,5 +6,6 @@
     pkgs.nmap
     pkgs.socat
     pkgs.ethtool
+    pkgs.dnsutils
   ];
 }

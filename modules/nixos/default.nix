@@ -3,7 +3,6 @@
   imports = [
     ./core/nix.nix
     ./core/users.nix
-    ./core/packages.nix
     ./networking
     ./security/ssh.nix
     ./security/hardening.nix
