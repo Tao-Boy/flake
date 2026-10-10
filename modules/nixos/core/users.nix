@@ -1,15 +1,19 @@
 { users, ... }:
 {
   # 账号由配置统一管理；"!" 表示锁定密码，管理员通过 SSH 公钥登录。
-  users.mutableUsers = false;
-  users.users.root.hashedPassword = "!";
-  users.users.${users.username} = {
-    isNormalUser = true;
-    # /var 每次重启清空，固定 UID 避免持久 home 的文件归属改变。
-    uid = 1000;
-    extraGroups = [ "wheel" ];
-    hashedPassword = "!";
-    openssh.authorizedKeys.keys = users.sshKeys;
+  users = {
+    mutableUsers = false;
+    users = {
+      root.hashedPassword = "!";
+      ${users.username} = {
+        isNormalUser = true;
+        # 固定 UID，避免持久 home 的文件归属因重建改变。
+        uid = 1000;
+        extraGroups = [ "wheel" ];
+        hashedPassword = "!";
+        openssh.authorizedKeys.keys = users.sshKeys;
+      };
+    };
   };
   security.sudo.wheelNeedsPassword = false;
 

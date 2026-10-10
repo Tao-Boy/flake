@@ -2,6 +2,7 @@ name: CI
 
 on:
   push:
+    branches: [main]
   pull_request:
   workflow_dispatch:
 
@@ -46,6 +47,8 @@ jobs:
           nix fmt -- users.nix
       - name: Evaluate the flake and NixOS assertions
         run: nix flake check --no-build --no-write-lock-file --show-trace
+      - name: Check Nix formatting and static analysis
+        run: nix build --no-link --no-write-lock-file --print-build-logs .#checks.x86_64-linux.quality
       - name: Build all checks, including installation and reboot tests
         run: |
           sudo chmod a+rw /dev/kvm
