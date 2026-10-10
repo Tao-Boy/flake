@@ -1,8 +1,4 @@
-{ config, lib, ... }:
-let
-  # 目标磁盘由机器声明，布局与 GRUB 使用同一设备。
-  disk = config.disko.devices.disk.system.device;
-in
+{ lib, ... }:
 {
   # 根目录在内存中，每次重启清空；50% 是上限，不会提前占用内存。
   disko.devices.nodev."/" = {
@@ -91,7 +87,7 @@ in
     efi.canTouchEfiVariables = false;
     grub = {
       enable = true;
-      devices = [ disk ];
+      # BIOS boot 分区使 disko 自动生成同一整盘的 GRUB devices。
       efiSupport = true;
       efiInstallAsRemovable = true;
       configurationLimit = 10;

@@ -1,6 +1,6 @@
 inputs:
 let
-  lib = inputs.nixpkgs.lib;
+  inherit (inputs.nixpkgs) lib;
   users = import ../users.nix;
   machines = import ../machines;
   mkSystem = import ../lib/nixos-system.nix { inherit inputs users; };
@@ -28,7 +28,7 @@ in
       inherit lib users nixosConfigurations;
       pkgs = inputs.nixpkgs.legacyPackages.${system};
       source = inputs.self;
-      nixpkgs = inputs.nixpkgs;
+      inherit (inputs) nixpkgs;
     }
   );
 }

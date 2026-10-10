@@ -10,7 +10,10 @@ let
   detected =
     (nixpkgs.lib.nixosSystem {
       modules = [
-        { nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux"; }
+        {
+          nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
+          system.stateVersion = "26.05";
+        }
         (import ../lib/hardware-report.nix ./fixtures/facter.json)
       ];
     }).config;
