@@ -11,10 +11,7 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "hm-backup";
-    extraSpecialArgs = {
-      inherit users;
-      pkgsUnstable = inputs.nixpkgs-unstable.legacyPackages.${machine.system};
-    };
+    extraSpecialArgs.pkgsUnstable = inputs.nixpkgs-unstable.legacyPackages.${machine.system};
     users.${users.username}.imports = [
       ../home
       machine.home

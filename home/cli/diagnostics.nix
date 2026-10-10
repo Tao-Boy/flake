@@ -6,6 +6,8 @@
     pkgs.lsof
     pkgs.strace
     pkgs.sysstat
+    pkgs.pciutils
+    pkgs.usbutils
     pkgsUnstable.btop
   ];
 }

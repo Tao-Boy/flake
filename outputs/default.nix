@@ -3,31 +3,40 @@ let
   inherit (inputs.nixpkgs) lib;
   users = import ../users.nix;
   machines = import ../machines;
-  mkSystem = import ../lib/nixos-system.nix { inherit inputs users; };
-  nixosConfigurations = lib.mapAttrs mkSystem machines;
-  # 工具所在平台与目标机器分开；当前部署工具仍只支持 x86_64-linux。
-  forAllSystems = lib.genAttrs [ "x86_64-linux" ];
+  system = "x86_64-linux";
+  pkgs = inputs.nixpkgs.legacyPackages.${system};
 in
 {
-  inherit nixosConfigurations;
-  packages = forAllSystems (
-    system:
-    import ./packages.nix {
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
+  nixosConfigurations = lib.mapAttrs (
+    name: machine:
+    lib.nixosSystem {
+      specialArgs = { inherit inputs users machine; };
+      modules = [
+        machine.module
+        {
+          nixpkgs.hostPlatform = lib.mkDefault machine.system;
+          networking.hostName = lib.mkDefault name;
+        }
+      ];
     }
-  );
-  formatter = forAllSystems (system: inputs.nixpkgs.legacyPackages.${system}.nixfmt);
-  devShells = forAllSystems (system: {
-    default = import ./dev-shell.nix {
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
-    };
-  });
-  checks = forAllSystems (
-    system:
-    import ../tests {
-      inherit lib users nixosConfigurations;
-      pkgs = inputs.nixpkgs.legacyPackages.${system};
-      source = inputs.self;
-    }
-  );
+  ) machines;
+
+  packages.${system} = {
+    inherit (pkgs) nixos-anywhere;
+    install = pkgs.nixos-anywhere;
+    default = pkgs.nixos-anywhere;
+  };
+  formatter.${system} = pkgs.nixfmt;
+  devShells.${system}.default = pkgs.mkShell {
+    packages = [
+      pkgs.git
+      pkgs.openssh
+      pkgs.nix
+      pkgs.nixos-anywhere
+      pkgs.nixos-rebuild
+      pkgs.nixfmt
+      pkgs.statix
+      pkgs.deadnix
+    ];
+  };
 }

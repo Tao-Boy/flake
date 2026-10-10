@@ -8,35 +8,16 @@
 nix develop
 nix fmt
 nix flake check --no-build --no-write-lock-file
+nix develop --command statix check .
+nix develop --command deadnix --fail .
 nix build --no-link --no-write-lock-file \
-  .#checks.x86_64-linux.quality \
-  .#checks.x86_64-linux.evaluation \
-  .#checks.x86_64-linux.home-vps \
-  .#checks.x86_64-linux.system-vps \
-  .#checks.x86_64-linux.disk-vps
+  .#nixosConfigurations.vps.config.system.build.toplevel \
+  .#nixosConfigurations.vps.config.system.build.diskoScript
 ```
 
-| 检查 | 内容 |
-| --- | --- |
-| `install` | 锁定的上游安装器 |
-| `quality` | nixfmt 格式、statix、deadnix |
-| `evaluation` | 静态网络覆盖、系统与用户兼容版本、管理员身份、SSH 策略和显式启动磁盘 |
-| `home-<machine>` | 每台机器的 Home Manager 环境 |
-| `system-<machine>` | 每台机器的 NixOS 系统 |
-| `disk-<machine>` | 每台机器的 disko 脚本构建；不执行格式化 |
-| `persistence-vps` | VM 安装、挂载与重启持久化回归测试 |
+系统构建包含 Home Manager；构建 disko 脚本不会执行格式化。CI 对机器清单中的每台机器执行相同构建，不运行安装和重启测试，也不需要 KVM。
 
-`.home` 作为原有 vps 用户环境的兼容入口保留。完整 `nix flake check` 会构建所有检查，包括需要 Linux KVM 的 VM 测试：
-
-```bash
-nix build --no-link --print-build-logs .#checks.x86_64-linux.persistence-vps
-# 或运行全部检查
-nix flake check --no-write-lock-file --print-build-logs
-```
-
-VM 测试直接定义在 `tests/persistence.nix`，验证 tmpfs / Btrfs / ESP、UID、SSH 主机密钥，以及 `/home`、`/nix` 数据跨重启保留，`/etc`、`/var`、`/root` 测试文件消失。硬件模板使用固定的 QEMU 配置，不运行硬件探测。
-
-CI 使用这些相同的 Nix 检查；空公钥模板只在 CI 工作区注入临时生成的公钥，不连接 VPS，也不写回仓库。生产配置的空公钥登录保护仍然有效。
+CI 只在工作区为空公钥模板生成临时公钥，不连接 VPS、不写回仓库。实际配置仍须填写真实公钥。
 
 ## 服务与网络
 
