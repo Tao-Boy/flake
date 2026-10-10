@@ -1,13 +1,13 @@
 { inputs, users }:
 name: machine:
 inputs.nixpkgs.lib.nixosSystem {
-  inherit (machine) system;
   specialArgs = { inherit users; };
   modules = [
     inputs.disko.nixosModules.disko
     inputs.home-manager.nixosModules.home-manager
     machine.module
     {
+      nixpkgs.hostPlatform = inputs.nixpkgs.lib.mkDefault machine.system;
       networking.hostName = inputs.nixpkgs.lib.mkDefault name;
       home-manager = {
         useGlobalPkgs = true;

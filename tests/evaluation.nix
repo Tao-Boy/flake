@@ -9,8 +9,10 @@ let
   # 合成探测报告仅用于测试，不代表任何实际 VPS 的硬件。
   detected =
     (nixpkgs.lib.nixosSystem {
-      system = "x86_64-linux";
-      modules = [ (import ../lib/hardware-report.nix ./fixtures/facter.json) ];
+      modules = [
+        { nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux"; }
+        (import ../lib/hardware-report.nix ./fixtures/facter.json)
+      ];
     }).config;
   vps = nixosConfigurations.vps.config;
   static =
