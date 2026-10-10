@@ -12,7 +12,7 @@
 | `machines/vps/hardware-configuration.nix` | 用户管理的硬件配置，可选择由安装器生成 |
 | `machines/vps/storage.nix` | 选择存储布局、明确指定待安装的整块磁盘 |
 | `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
-| `modules/home.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
+| `modules/home-manager.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
 | `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
 | `home/default.nix` | 公共 Home Manager 兼容设置 |
 | `home/shell/`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
@@ -21,7 +21,7 @@
 | `users.nix` | 管理员身份与 SSH 公钥 |
 | `docs/` | 定制、部署与运维说明 |
 
-软件如何配置写在 `home/`，机器是否使用该软件写在 `machines/<name>/home.nix`。系统与用户配置通过本地文件显式导入，结构与参考项目见[结构说明](docs/architecture.md)。
+系统功能在 `machines/<name>/default.nix` 中从 `modules/` 选择，用户软件在 `machines/<name>/home.nix` 中从 `home/` 选择。共享文件只定义相应功能，结构与参考项目见[结构说明](docs/architecture.md)。
 
 ## 最小配置与安装
 
@@ -82,7 +82,7 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-CI 直接执行格式 / 静态检查、NixOS 求值、系统与 disko 脚本构建；Home Manager 随系统构建。仓库不保留测试目录或自定义 checks 输出。空公钥模板仅在 CI 工作区临时填入生成的公钥。
+CI 直接执行格式 / 静态检查、NixOS 求值、系统与已选用的 disko 脚本构建；Home Manager 随系统构建。仓库不保留测试目录或自定义 checks 输出。空公钥模板仅在 CI 工作区临时填入生成的公钥。
 
 - [目录设计与迁移](docs/architecture.md)
 - [定制与新增机器](docs/customization.md)

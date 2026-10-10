@@ -52,10 +52,13 @@ jobs:
             statix check .
             deadnix --fail .
           '
-      - name: Build the systems and disk scripts
+      - name: Build the systems and selected disk scripts
         run: |
           for machine in $(nix eval --raw .#nixosConfigurations --apply 'machines: builtins.concatStringsSep " " (builtins.attrNames machines)'); do
             nix build --no-link --no-write-lock-file --print-build-logs \
-              ".#nixosConfigurations.${machine}.config.system.build.toplevel" \
-              ".#nixosConfigurations.${machine}.config.system.build.diskoScript"
+              ".#nixosConfigurations.${machine}.config.system.build.toplevel"
+            if [ "$(nix eval --json --no-write-lock-file ".#nixosConfigurations.${machine}.config.system.build" --apply 'builtins.hasAttr "diskoScript"')" = true ]; then
+              nix build --no-link --no-write-lock-file --print-build-logs \
+                ".#nixosConfigurations.${machine}.config.system.build.diskoScript"
+            fi
           done

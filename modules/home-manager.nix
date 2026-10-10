@@ -12,9 +12,6 @@
     useUserPackages = true;
     backupFileExtension = "hm-backup";
     extraSpecialArgs.pkgsUnstable = inputs.nixpkgs-unstable.legacyPackages.${machine.system};
-    users.${users.username}.imports = [
-      ../home
-      machine.home
-    ];
+    users.${users.username} = machine.home;
   };
 }

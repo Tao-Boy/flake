@@ -15,7 +15,7 @@ nix build --no-link --no-write-lock-file \
   .#nixosConfigurations.vps.config.system.build.diskoScript
 ```
 
-系统构建包含 Home Manager；构建 disko 脚本不会执行格式化。CI 对机器清单中的每台机器执行相同构建，不运行安装和重启测试，也不需要 KVM。
+系统构建包含 Home Manager；构建 disko 脚本不会执行格式化。CI 构建清单中的每台机器，并在机器选用 disko 时构建对应脚本，不运行安装和重启测试，也不需要 KVM。
 
 CI 只在工作区为空公钥模板生成临时公钥，不连接 VPS、不写回仓库。实际配置仍须填写真实公钥。
 

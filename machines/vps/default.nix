@@ -1,7 +1,11 @@
 {
   imports = [
-    ../../modules/nixos
-    ../../modules/home.nix
+    ../../modules/nixos/core
+    ../../modules/nixos/networking
+    ../../modules/nixos/security/ssh.nix
+    ../../modules/nixos/security/hardening.nix
+    ../../modules/nixos/services/maintenance.nix
+    ../../modules/home-manager.nix
     ./hardware-configuration.nix
     ./storage.nix
   ];

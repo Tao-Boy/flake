@@ -1,12 +1,8 @@
 { lib, ... }:
 {
   imports = [
-    ./core/nix.nix
-    ./core/users.nix
-    ./networking
-    ./security/ssh.nix
-    ./security/hardening.nix
-    ./services/maintenance.nix
+    ./nix.nix
+    ./users.nix
   ];
 
   i18n.defaultLocale = lib.mkDefault "en_US.UTF-8";
