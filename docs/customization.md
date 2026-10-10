@@ -14,7 +14,7 @@ zramSwap.memoryPercent = 25;
 nix.settings.max-jobs = 2;
 ```
 
-共享系统配置在 `modules/nixos/`，全部用户软件配置在 `home/`。机器的系统差异和软件选择均放在 `machines/<name>/`，用户模块由其中的 `home.nix` 选择。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
+共享系统配置在 `modules/nixos/`，全部用户软件配置在 `home/`。机器的系统差异和软件选择均放在 `machines/<name>/`，系统功能在 `default.nix` 的 imports 中逐项选择，用户模块在 `home.nix` 中选择。网络、SSH、安全和维护服务都可独立取舍；Home Manager 接入通过 `modules/home-manager.nix` 启用。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
 
 ## 硬件配置与网络
 
@@ -57,7 +57,7 @@ systemd.network.networks."10-uplink" = {
 
 ## 新增机器
 
-复制 `machines/vps/` 为 `machines/edge/`，在 `home.nix` 中调整软件模块的 imports。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
+复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
 
 ```nix
 edge = {
@@ -67,7 +67,7 @@ edge = {
 };
 ```
 
-机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统和 disko 脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
+不需要 Home Manager 的机器可移除 `modules/home-manager.nix` 导入并省略清单中的 `home` 项。机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统；仅为选用 disko 的机器构建其脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
 
 ```bash
 git add machines home

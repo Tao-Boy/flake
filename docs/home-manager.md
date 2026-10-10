@@ -1,6 +1,20 @@
 # 用户软件配置
 
-所有用户软件和 dotfiles 均放在 `home/`，由 Home Manager 随 NixOS 重建激活。机器只选择启用哪些模块。
+所有用户软件和 dotfiles 均放在 `home/`，由 Home Manager 随 NixOS 重建激活。机器在自己的 `home.nix` 中逐项选择，例如：
+
+```nix
+# machines/vps/home.nix
+{
+  imports = [
+    ../../home
+    ../../home/shell
+    ../../home/cli/utilities.nix
+    ../../home/programs/git.nix
+  ];
+}
+```
+
+这是精简选择示例；实际 VPS 还选择诊断、网络工具、Neovim 和 tmux。`../../home` 只提供公共兼容版本，不会自动启用软件。
 
 | 内容 | 位置 |
 | --- | --- |
@@ -11,7 +25,7 @@
 | 网络诊断工具 | `home/cli/network.nix` |
 | Git、Neovim、tmux | `home/programs/` |
 | 每台机器的软件选择 | `machines/<name>/home.nix` |
-| Home Manager 接入 | `modules/home.nix` |
+| Home Manager 接入 | `modules/home-manager.nix` |
 
 新增软件时，先在 `home/` 编写配置，例如：
 
