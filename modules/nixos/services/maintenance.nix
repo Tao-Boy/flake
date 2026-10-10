@@ -1,7 +1,10 @@
 { lib, ... }:
 {
-  services.chrony.enable = lib.mkDefault true;
-  services.fstrim.enable = lib.mkDefault true;
+  services = {
+    chrony.enable = lib.mkDefault true;
+    qemuGuest.enable = lib.mkDefault true;
+    fstrim.enable = lib.mkDefault true;
+  };
   zramSwap = {
     enable = lib.mkDefault true;
     algorithm = "zstd";

@@ -5,7 +5,6 @@ pkgs.mkShell {
     pkgs.openssh
     pkgs.nix
     pkgs.nixos-anywhere
-    pkgs.nixos-facter
     pkgs.nixos-rebuild
     pkgs.nixfmt
     pkgs.statix

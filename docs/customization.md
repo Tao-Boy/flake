@@ -14,11 +14,17 @@ zramSwap.memoryPercent = 25;
 nix.settings.max-jobs = 2;
 ```
 
-功能组合放在 `profiles/`，全局功能放在 `modules/`，单台机器的设置放在 `machines/<name>/`。包仍以完整的 `pkgs.xxx` 或 `pkgsUnstable.xxx` 声明。
+共享系统配置在 `modules/nixos/`，共享用户配置在 `home/`。单台机器的系统设置放在 `machines/<name>/`，用户差异放在 `home/machines/<name>.nix`。包仍以完整的 `pkgs.xxx` 或 `pkgsUnstable.xxx` 声明。
 
-## 自动硬件与网络
+## 硬件配置与网络
 
-安装命令添加 `--generate-hardware-config nixos-facter ./machines/vps/facter.json`。生成的报告存在后，`hardware.nix` 自动接入它；驱动不再由人手列出。没有报告时使用 QEMU profile，适合模板检查和通用虚拟机测试。迁移已安装系统的探测方式见[结构说明](architecture.md)。
+`machines/vps/hardware-configuration.nix` 按固定路径导入，不执行硬件探测或读取报告。仓库提供 QEMU 模板，用户可保留适用模板，或显式使用以下安装参数生成并替换：
+
+```bash
+--generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
+```
+
+生成流程由用户启动，后续重建使用保存的 Nix 文件。迁移已安装机器也可保留原有硬件配置，或用 `nixos-generate-config --show-hardware-config --no-filesystems` 生成，具体见[安装说明](deployment.md)。
 
 常见 VPS 的网络只需要 DHCP / IPv6 RA。NixOS 根据接口类型生成 networkd 规则，使用服务商返回的地址、路由和 DNS，不依赖 `eth0` / `ens3` 等名称。DHCP 身份使用 MAC / link-layer，避免 tmpfs 根导致 machine-id 变化影响租约。
 
@@ -43,31 +49,31 @@ systemd.network.networks."10-uplink" = {
 
 ## 存储
 
-`machines/vps/storage.nix` 只声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件探测不会代替磁盘擦除目标的选择。
+`machines/vps/storage.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-共享布局在 `modules/nixos/storage/ephemeral-root.nix`：GPT、BIOS boot、ESP、Btrfs `/nix` 和 `/home`，加 tmpfs 根。它同时管理易失日志和持久 SSH 主机密钥；这些策略不会随普通服务器角色强加给持久根机器。BIOS / UEFI 兼容设置和原布局保持一致。
+共享布局在 `modules/nixos/storage/ephemeral-root.nix`：GPT、BIOS boot、ESP、Btrfs `/nix` 和 `/home`，加 tmpfs 根。它同时管理易失日志和持久 SSH 主机密钥；机器选择该布局后才应用这些策略。BIOS / UEFI 兼容设置和原布局保持一致。
 
-若需要持久根、加密或多盘，创建另一存储模块，在机器中选择它。自动生成的 facter 报告不会声明挂载点，因此不会与 disko 文件系统定义重复。
+若需要持久根、加密或多盘，创建另一存储模块，在机器中选择它。通过 nixos-anywhere 生成的硬件文件不声明挂载点；手工生成时使用 `--no-filesystems`，以免与 disko 文件系统定义重复。
 
 ## 新增机器
 
-复制 `machines/vps/` 为 `machines/edge/`，**删除复制来的 `facter.json`**，调整存储、角色和本机差异。在 `machines/default.nix` 增加：
+复制 `machines/vps/` 为 `machines/edge/`，另复制 `home/machines/vps.nix` 为 `home/machines/edge.nix`。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
 
 ```nix
 edge = {
   system = "x86_64-linux";
   module = ./edge;
-  home = ./edge/home.nix;
+  home = ../home/machines/edge.nix;
 };
 ```
 
 无需复制 outputs 或系统构造代码。每台机器的 `home-edge`、`system-edge`、`disk-edge` 构建检查自动生成，CI 执行全部检查。当前共享 VPS 布局与部署工具只验证 x86_64 Linux；添加其他架构需要适配启动布局和验证环境。
 
 ```bash
-git add machines
+git add machines home
 nix flake check --no-build --no-write-lock-file
 nix run .#install -- --flake .#edge --target-host root@YOUR_SERVER \
-  --generate-hardware-config nixos-facter ./machines/edge/facter.json
+  --generate-hardware-config nixos-generate-config ./machines/edge/hardware-configuration.nix
 ```
 
 上面的安装会清空配置指定的磁盘。现有机器的 `vps` 持久化回归测试单独保留；新机器的专有存储 / 服务测试可在 `tests/` 中增加。

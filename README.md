@@ -1,27 +1,27 @@
 # flake
 
-面向 x86_64 Linux VPS 的模块化 NixOS 配置。系统使用锁定的 NixOS 26.05 与 Home Manager，精选终端工具来自独立锁定的 nixpkgs-unstable。机器入口只声明角色、存储目标和本机差异，硬件由 `nixos-facter` 探测，普通网络通过 DHCP / IPv6 RA 获取地址、路由与 DNS。
+面向 x86_64 Linux VPS 的模块化 NixOS 配置。系统使用锁定的 NixOS 26.05 与 Home Manager，精选终端工具来自独立锁定的 nixpkgs-unstable。系统配置与用户环境分别放在 `modules/nixos/` 和 `home/`；硬件配置是用户管理的普通 Nix 文件，网络默认通过 DHCP / IPv6 RA 获取地址、路由与 DNS。
 
 ## 目录与职责
 
 | 目录或文件 | 职责 |
 | --- | --- |
-| `flake.nix`、`flake.lock` | 声明并锁定输入，不混入机器配置 |
-| `machines/default.nix` | 机器清单；自动生成系统和每台机器的构建检查 |
-| `machines/vps/default.nix` | 角色选择、时区和系统兼容版本 |
-| `machines/vps/hardware.nix` | 接入同目录的自动探测报告 `facter.json` |
-| `machines/vps/storage.nix` | 明确指定待安装的整块磁盘 |
-| `machines/vps/home.nix` | 该机器的用户环境差异 |
-| `profiles/nixos/`、`profiles/home/` | 组合常用功能，供机器选择 |
-| `modules/nixos/` | 系统核心、网络、安全、服务、存储布局 |
-| `modules/home/` | shell、通用工具、诊断、网络工具、独立程序配置 |
-| `lib/` | 系统构造和探测报告接入逻辑 |
-| `outputs/` | 包、开发环境和输出组装 |
+| `flake.nix`、`flake.lock` | 声明并锁定输入 |
+| `machines/default.nix` | 机器清单，关联系统和用户差异，生成每台机器的构建检查 |
+| `machines/vps/default.nix` | 本地配置入口、时区和系统兼容版本 |
+| `machines/vps/hardware-configuration.nix` | 用户管理的硬件配置，可选择由安装器生成 |
+| `machines/vps/storage.nix` | 选择存储布局、明确指定待安装的整块磁盘 |
+| `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
+| `modules/home.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
+| `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
+| `home/default.nix` | 组合共享用户环境 |
+| `home/shell/`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
+| `home/machines/vps.nix` | 该机器的用户环境差异 |
+| `lib/`、`outputs/` | 系统构造和 flake 输出组装 |
 | `users.nix` | 管理员身份与 SSH 公钥 |
-| `tests/` | Nix 求值、质量、安装和重启测试 |
-| `docs/` | 结构说明、定制、部署和运维 |
+| `tests/`、`docs/` | 检查、安装重启测试与使用文档 |
 
-配置顺序为：`inputs → outputs → machines → profiles → modules`。不再维护 `hosts/`、`home/hosts/` 或独立 shell 脚本。结构参考 [Misterio77/nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)、[ryan4yin/nix-config](https://github.com/ryan4yin/nix-config) 和 [hlissner/dotfiles](https://github.com/hlissner/dotfiles)，取其分层思路，保留原生 NixOS / Home Manager 选项。详细理由见[结构说明](docs/architecture.md)。
+系统构造器加载机器入口，由本地配置文件继续导入系统、存储和用户环境。仓库不使用 `profiles/`、硬件报告检测或独立 shell 包装脚本。结构参考 [Misterio77/nix-starter-configs](https://github.com/Misterio77/nix-starter-configs)、[ryan4yin/nix-config](https://github.com/ryan4yin/nix-config) 和 [hlissner/dotfiles](https://github.com/hlissner/dotfiles)，保留显式 imports 与原生 NixOS / Home Manager 选项。详细理由见[结构说明](docs/architecture.md)。
 
 ## 最小配置与安装
 
@@ -32,7 +32,8 @@ cd flake
 
 1. 在 `users.nix` 填写完整 SSH 公钥；默认管理员为 `tau`，UID 为 1000。
 2. 在 `machines/vps/storage.nix` 核对目标整盘；默认为 `/dev/vda`，优先使用稳定的 by-id 路径。
-3. 确认服务商支持 DHCP / IPv6 RA；只有静态网络才需要在机器中补充[网络配置](docs/customization.md)。
+3. 决定保留适用于 QEMU VPS 的硬件模板，或在安装时生成真实硬件配置。
+4. 确认服务商支持 DHCP / IPv6 RA；静态网络在机器中补充[网络配置](docs/customization.md)。
 
 ```nix
 # users.nix
@@ -48,17 +49,20 @@ cd flake
 nix flake check --no-build --no-write-lock-file
 ```
 
-**下列安装命令会按 disko 布局清空目标磁盘。** 先备份数据并核对整盘，再运行：
+**安装会按 disko 布局清空目标磁盘。** 先备份数据并核对整盘。使用已准备好的硬件配置安装：
 
 ```bash
-nix run .#install -- \
-  --flake .#vps --target-host root@YOUR_SERVER \
-  --generate-hardware-config nixos-facter ./machines/vps/facter.json
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER
 ```
 
-`install` 直接引用锁定的 `nixos-anywhere` 包，参数采用上游语法。安装器探测真实硬件后写入报告，再求值并构建系统；报告包含所需存储驱动、CPU 和虚拟化信息，NixOS 自动生成相应配置。缺少报告时仅使用上游 QEMU profile 作为模板 / VM 测试起点，正式安装应使用探测参数。安装后审查并提交生成的报告；不要用测试样例代替真实探测结果。
+若选择在安装时生成并替换硬件配置，显式添加上游参数：
 
-磁盘分区是部署策略，DHCP 不提供的静态地址是服务商约束，两者仍需明确声明。不会自动选择并格式化某个猜测的磁盘，也不会把临时安装环境中的 IP 当作长期网络配置。
+```bash
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
+```
+
+`install` 直接引用锁定的 `nixos-anywhere` 包。只有用户指定生成参数时，安装器才写入硬件配置；仓库求值不执行硬件探测，也不根据报告是否存在改变导入。生成完成后审查并提交 Nix 文件。此后重建使用已保存的配置。磁盘擦除目标仍由用户明确指定，静态网络参数按服务商要求填写。
 
 ## 存储与更新
 
@@ -69,7 +73,7 @@ nix run .#install -- \
 | `/home` | Btrfs 子卷 | 保留用户文件与 Home Manager 数据 |
 | `/boot` | 512 MiB ESP | 保留启动文件 |
 
-本次目录重构保留上述布局、管理员 UID、SSH 策略以及 `system.stateVersion` / `home.stateVersion`。旧 ext4 根不能通过重建自动转成此布局；`/var` 的数据库、系统容器和 ACME 状态仍需单独持久化。
+目录调整保留上述布局、管理员 UID、SSH 策略以及 `system.stateVersion` / `home.stateVersion`。旧 ext4 根不能通过重建自动转成此布局；`/var` 的数据库、系统容器和 ACME 状态仍需单独持久化。
 
 ```bash
 nix develop

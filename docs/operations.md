@@ -2,7 +2,7 @@
 
 ## 修改后验证
 
-先填写真实 SSH 公钥，新增文件执行 `git add`。本地开发环境包含 Nix、nixfmt、statix、deadnix、安装器和硬件探测工具。
+先填写真实 SSH 公钥，新增文件执行 `git add`。本地开发环境包含 Nix、nixfmt、statix、deadnix、安装器。
 
 ```bash
 nix develop
@@ -20,7 +20,7 @@ nix build --no-link --no-write-lock-file \
 | --- | --- |
 | `install` | 锁定的上游安装器 |
 | `quality` | nixfmt 格式、statix、deadnix |
-| `evaluation` | 探测报告接入、存储驱动、KVM agent、静态网络覆盖、身份与存储兼容性 |
+| `evaluation` | 静态网络覆盖、系统与用户兼容版本、管理员身份、SSH 策略和显式启动磁盘 |
 | `home-<machine>` | 每台机器的 Home Manager 环境 |
 | `system-<machine>` | 每台机器的 NixOS 系统 |
 | `disk-<machine>` | 每台机器的 disko 脚本构建；不执行格式化 |
@@ -34,7 +34,7 @@ nix build --no-link --print-build-logs .#checks.x86_64-linux.persistence-vps
 nix flake check --no-write-lock-file --print-build-logs
 ```
 
-VM 测试直接定义在 `tests/persistence.nix`，验证 tmpfs / Btrfs / ESP、UID、SSH 主机密钥，以及 `/home`、`/nix` 数据跨重启保留，`/etc`、`/var`、`/root` 测试文件消失。合成 facter 报告仅供求值测试，不是实际硬件配置。
+VM 测试直接定义在 `tests/persistence.nix`，验证 tmpfs / Btrfs / ESP、UID、SSH 主机密钥，以及 `/home`、`/nix` 数据跨重启保留，`/etc`、`/var`、`/root` 测试文件消失。硬件模板使用固定的 QEMU 配置，不运行硬件探测。
 
 CI 使用这些相同的 Nix 检查；空公钥模板只在 CI 工作区注入临时生成的公钥，不连接 VPS，也不写回仓库。生产配置的空公钥登录保护仍然有效。
 
