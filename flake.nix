@@ -1,5 +1,5 @@
 {
-  description = "x86_64 NixOS VPS with Home Manager and nixos-anywhere";
+  description = "Modular NixOS machines with detected hardware and Home Manager";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
