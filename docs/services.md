@@ -1,13 +1,13 @@
 # 可选服务
 
-默认只启用 VPS 所需服务。额外服务通过 `hosts/vps/default.nix` 的 `imports` 显式启用，再直接填写原生选项。
+默认只启用 VPS 所需服务。额外服务通过 `machines/vps/default.nix` 的 `imports` 显式启用，再直接填写原生选项。
 
 ## Nginx 与 HTTPS
 
 在现有 imports 加入：
 
 ```nix
-../../modules/nixos/nginx.nix
+../../modules/nixos/services/nginx.nix
 ```
 
 该模块启用 Nginx 推荐参数并开放 TCP 80/443。HTTPS 还需要在主机中配置：
@@ -34,7 +34,7 @@ services.nginx.virtualHosts."example.com" = {
 在 imports 加入：
 
 ```nix
-../../modules/nixos/containers.nix
+../../modules/nixos/services/containers.nix
 ```
 
 该模块启用 Podman、Docker 命令兼容和容器 DNS。系统容器可声明在主机配置：

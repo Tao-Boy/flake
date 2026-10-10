@@ -28,14 +28,14 @@ jobs:
       - name: Prepare a CI-only public key for an unconfigured template
         run: |
           mkdir -p work
-          if [ "$(nix eval --json --file vars/default.nix sshKeys)" = '[]' ]; then
+          if [ "$(nix eval --json --file users.nix sshKeys)" = '[]' ]; then
             ssh-keygen -q -t ed25519 -N "" -f work/ci-key
             export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
             python3 - <<'PY'
           import json
           import os
           from pathlib import Path
-          path = Path("vars/default.nix")
+          path = Path("users.nix")
           source = path.read_text()
           marker = "sshKeys = [ ];"
           assert marker in source, "Update the CI fixture when changing the empty-key template"
@@ -43,55 +43,10 @@ jobs:
           path.write_text(source)
           PY
           fi
+          nix fmt -- users.nix
       - name: Evaluate the flake and NixOS assertions
         run: nix flake check --no-build --no-write-lock-file --show-trace
-      - name: Build the user environment, system and disk script
-        run: |
-          nix build --no-link --no-write-lock-file --print-build-logs \
-            .#checks.x86_64-linux.home \
-            .#nixosConfigurations.vps.config.system.build.toplevel \
-            .#nixosConfigurations.vps.config.system.build.diskoScript
-      - name: Test mounts and persistence across a VM reboot
+      - name: Build all checks, including installation and reboot tests
         run: |
           sudo chmod a+rw /dev/kvm
-          cat > work/persistence-test.nix <<'NIX'
-          { lib, myvars, ... }:
-          {
-            # The test uses a shared 9p store; keep ownership changes in the VPS only.
-            disko.tests.extraConfig.nix.settings.build-users-group = lib.mkForce "";
-            # Disko borrows /nix/store without registering its closure in the guest DB.
-            disko.tests.extraConfig.home-manager.users.${myvars.username}.home.activationGenerateGcRoot = lib.mkForce false;
-            disko.tests.extraChecks = ''
-              machine.wait_for_unit("sshd.service")
-              machine.wait_for_unit("home-manager-${myvars.username}.service")
-              machine.succeed("findmnt / --types tmpfs")
-              machine.succeed("findmnt /nix --types btrfs")
-              machine.succeed("findmnt /home --types btrfs")
-              machine.succeed("findmnt /boot --types vfat")
-              machine.succeed("test $(id -u ${myvars.username}) = 1000")
-              machine.succeed("touch /home/persistence-test /nix/var/persistence-test")
-              machine.succeed("touch /etc/volatile-test /var/volatile-test /root/volatile-test")
-              host_keys = machine.succeed("sha256sum /nix/var/lib/sshd/ssh_host_*_key")
-              machine.reboot()
-              machine.wait_for_shutdown()
-              machine.start()
-              machine.wait_for_unit("sshd.service")
-              machine.wait_for_unit("home-manager-${myvars.username}.service")
-              machine.succeed("findmnt / --types tmpfs")
-              machine.succeed("findmnt /nix --types btrfs")
-              machine.succeed("findmnt /home --types btrfs")
-              machine.succeed("test -f /home/persistence-test && test -f /nix/var/persistence-test")
-              machine.succeed("test ! -e /etc/volatile-test && test ! -e /var/volatile-test && test ! -e /root/volatile-test")
-              assert machine.succeed("sha256sum /nix/var/lib/sshd/ssh_host_*_key") == host_keys
-              machine.succeed("test $(id -u ${myvars.username}) = 1000")
-            '';
-          }
-          NIX
-          nix build --impure --no-link --print-build-logs --expr '
-            let
-              flake = builtins.getFlake (toString ./.);
-            in
-              (flake.nixosConfigurations.vps.extendModules {
-                modules = [ ./work/persistence-test.nix ];
-              }).config.system.build.installTest
-          '
+          nix flake check --no-write-lock-file --print-build-logs
