@@ -3,6 +3,6 @@
   vps = {
     system = "x86_64-linux";
     module = ./vps;
-    home = ./vps/home.nix;
+    home = ../home/machines/vps.nix;
   };
 }

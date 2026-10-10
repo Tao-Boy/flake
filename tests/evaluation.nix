@@ -1,22 +1,10 @@
 {
   lib,
   pkgs,
-  nixpkgs,
   users,
   nixosConfigurations,
 }:
 let
-  # 合成探测报告仅用于测试，不代表任何实际 VPS 的硬件。
-  detected =
-    (nixpkgs.lib.nixosSystem {
-      modules = [
-        {
-          nixpkgs.hostPlatform = lib.mkDefault "x86_64-linux";
-          system.stateVersion = "26.05";
-        }
-        (import ../lib/hardware-report.nix ./fixtures/facter.json)
-      ];
-    }).config;
   vps = nixosConfigurations.vps.config;
   static =
     (nixosConfigurations.vps.extendModules {
@@ -32,21 +20,6 @@ let
       ];
     }).config;
   tests = [
-    {
-      assertion = detected.hardware.facter.enable;
-      message = "Generated hardware reports must activate facter.";
-    }
-    {
-      assertion = lib.all (driver: builtins.elem driver detected.boot.initrd.availableKernelModules) [
-        "ahci"
-        "sd_mod"
-      ];
-      message = "Detected storage drivers must reach the initrd.";
-    }
-    {
-      assertion = detected.services.qemuGuest.enable;
-      message = "KVM detection must enable the guest agent.";
-    }
     {
       assertion = !(static.systemd.network.networks ? "99-ethernet-default-dhcp");
       message = "Static networks must not retain the generic DHCP rule.";

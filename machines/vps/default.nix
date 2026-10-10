@@ -1,7 +1,8 @@
 {
   imports = [
-    ../../profiles/nixos/server.nix
-    ./hardware.nix
+    ../../modules/nixos
+    ../../modules/home.nix
+    ./hardware-configuration.nix
     ./storage.nix
   ];
 

@@ -1,5 +1,5 @@
 {
-  description = "Modular NixOS machines with detected hardware and Home Manager";
+  description = "Modular NixOS machines with separate system and home configurations";
 
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";

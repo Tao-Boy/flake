@@ -1,7 +1,6 @@
 {
   lib,
   pkgs,
-  nixpkgs,
   users,
   nixosConfigurations,
   source,
@@ -23,7 +22,6 @@ machineChecks
     inherit
       lib
       pkgs
-      nixpkgs
       users
       nixosConfigurations
       ;

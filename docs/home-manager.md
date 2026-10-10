@@ -7,22 +7,21 @@ NixOS 管理系统服务、账号和系统工具；Home Manager 管理交互式�
 | 内容 | 位置 |
 | --- | --- |
 | 系统诊断工具 | `modules/nixos/core/packages.nix` |
-| Bash、fzf、bat、eza | `modules/home/shell/default.nix` |
-| 文件、下载、归档工具 | `modules/home/cli/utilities.nix` |
-| 进程、磁盘和性能诊断 | `modules/home/cli/diagnostics.nix` |
-| 网络诊断工具 | `modules/home/cli/network.nix` |
-| Git、Neovim、tmux | `modules/home/programs/` |
-| 服务器用户环境组合 | `profiles/home/server.nix` |
-| 本机用户差异 | `machines/vps/home.nix` |
-| Home Manager 接入 | `lib/nixos-system.nix` |
+| Bash、fzf、bat、eza | `home/shell/default.nix` |
+| 文件、下载、归档工具 | `home/cli/utilities.nix` |
+| 进程、磁盘和性能诊断 | `home/cli/diagnostics.nix` |
+| 网络诊断工具 | `home/cli/network.nix` |
+| Git、Neovim、tmux | `home/programs/` |
+| 共享用户环境组合 | `home/default.nix` |
+| 本机用户差异 | `home/machines/vps.nix` |
+| Home Manager 接入 | `modules/home.nix` |
 
 添加本机工具或作者信息：
 
 ```nix
-# machines/vps/home.nix
+# home/machines/vps.nix
 { pkgs, pkgsUnstable, ... }:
 {
-  imports = [ ../../profiles/home/server.nix ];
   home.packages = [ pkgs.sqlite pkgsUnstable.just ];
   programs.git.settings.user = {
     name = "Your Name";

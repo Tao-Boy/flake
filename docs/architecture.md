@@ -1,47 +1,59 @@
 # 结构设计与迁移
 
-## 分层原则
+## 职责划分
 
-`machines` 是部署对象，`profiles` 是角色组合，`modules` 是可复用功能。机器选择角色并覆盖少量原生选项；角色只组合模块；模块不读取机器名称或整个仓库的机器清单。`lib` 只负责构造 NixOS 系统及接入探测报告，`outputs` 只负责组装 flake 输出。
+`machines/` 声明部署对象和本机系统差异，`modules/nixos/` 提供共享系统配置，`home/` 保存 Home Manager 用户配置。共享系统组合入口是 `modules/nixos/default.nix`，共享用户组合入口是 `home/default.nix`，仓库不再增加 `profiles/` 层。
 
-系统与用户配置分别放在 `modules/nixos` 和 `modules/home`，避免相同名称的选项在不同模块体系中混用。用户配置按工具用途和程序拆分，不再把 Git、编辑器、终端复用器与几十个包混在同一个文件中。
+系统模块使用 NixOS 选项，用户模块使用 Home Manager 选项，两者分别维护。`modules/home.nix` 是 NixOS 接入文件：它导入 Home Manager 模块，并将 `home/default.nix` 与机器清单指定的 `home/machines/<name>.nix` 组合为管理员用户环境。用户的软件和 dotfiles 均位于 `home/`。
+
+`lib/nixos-system.nix` 只构造系统、传递输入与机器信息、设置默认平台和主机名。它的模块列表只加载本地机器入口；外部 Home Manager / disko 模块分别由 `modules/home.nix` 和 `modules/disko.nix` 导入。机器通过 `storage.nix` 选择 disko 接入和具体存储布局，保持依赖与配置入口清晰。
+
+| 导入入口 | 下一层配置 |
+| --- | --- |
+| `outputs/default.nix` | 读取机器清单，以 `lib/nixos-system.nix` 构造系统 |
+| `machines/vps/default.nix` | 共享系统、用户接入、硬件文件、存储配置 |
+| `modules/nixos/default.nix` | core、networking、security、services |
+| `modules/home.nix` | 上游 Home Manager 模块、`home/`、机器用户差异 |
+| `machines/vps/storage.nix` | `modules/disko.nix`、共享存储布局 |
+| `modules/disko.nix` | 上游 disko 模块 |
+
+硬件文件按固定路径显式导入，不读取 facter 报告或判断文件存在性。仓库中的文件是 QEMU 模板；用户可以保留、手工替换或通过安装器生成实际配置。后续求值与重建直接使用已保存的 Nix 文件。
 
 ## 参考依据
 
 | 项目 | 借鉴内容 | 本仓库的取舍 |
 | --- | --- | --- |
-| [Misterio77/nix-starter-configs](https://github.com/Misterio77/nix-starter-configs/blob/main/standard/flake.nix) | 系统模块与 Home Manager 模块分开、标准 flake 输出 | 仅保留当前需要的 Linux 输出，用户环境随 NixOS 激活 |
-| [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config/blob/main/flake.nix) | 输入与 outputs 分离、共享配置与机器差异分层 | 小规模机器清单；不引入递归模块加载框架或额外部署工具 |
-| [hlissner/dotfiles](https://github.com/hlissner/dotfiles/blob/master/default.nix) | 功能模块和可覆盖的共享默认值 | 显式 imports、原生选项，避免大规模自定义选项体系 |
-| [nixos-anywhere](https://github.com/nix-community/nixos-anywhere/blob/main/docs/quickstart.md) | 安装阶段生成 facter 报告，再构建系统 | 使用 nixpkgs 已包含的 facter 模块，不新增 flake 输入 |
+| [Misterio77/nix-starter-configs](https://github.com/Misterio77/nix-starter-configs/blob/main/standard/flake.nix) | 分离系统与 Home Manager、标准 flake 输出 | 用户环境放在 `home/`，随 NixOS 激活 |
+| [ryan4yin/nix-config](https://github.com/ryan4yin/nix-config/blob/main/flake.nix) | 输入与 outputs 分离、共享配置与机器差异分开 | 使用小规模机器清单和显式导入 |
+| [hlissner/dotfiles](https://github.com/hlissner/dotfiles/blob/master/default.nix) | 功能模块与可覆盖的默认值 | 保留原生选项，不增加自定义模块框架 |
+| [nixos-anywhere](https://github.com/nix-community/nixos-anywhere/blob/1.13.0/src/nixos-anywhere.sh) | 用户显式选择硬件配置生成后端 | 使用 `nixos-generate-config` 生成普通 Nix 文件 |
 
-借鉴的是职责划分与上游接口，未复制其他仓库的个人硬件、地址、公钥或秘密。
+这些参考用于职责划分与接口设计，个人硬件、地址、公钥和秘密不纳入共享配置。
 
 ## 路径迁移
 
-| 原路径 | 新路径 |
+| 原路径 | 当前路径 |
 | --- | --- |
 | `hosts/vps/default.nix` | `machines/vps/default.nix` |
-| `hosts/vps/hardware-configuration.nix` | `machines/vps/hardware.nix` + 生成的 `facter.json` |
+| `hosts/vps/hardware-configuration.nix`、`machines/vps/hardware.nix` | `machines/vps/hardware-configuration.nix` |
 | `hosts/vps/disk-config.nix` | `machines/vps/storage.nix` + `modules/nixos/storage/ephemeral-root.nix` |
-| `home/hosts/vps.nix` | `machines/vps/home.nix` |
-| `modules/base/` | `modules/nixos/core/` + `profiles/nixos/base.nix` |
-| `modules/nixos/server.nix` | `profiles/nixos/server.nix` + 网络、安全、维护模块 |
-| `home/base/` | `modules/home/` + `profiles/home/server.nix` |
+| `home/hosts/vps.nix`、`machines/vps/home.nix` | `home/machines/vps.nix` |
+| `profiles/nixos/` | `modules/nixos/default.nix` |
+| `profiles/home/server.nix` | `home/default.nix` |
+| `home/base/`、`modules/home/` | `home/shell/`、`home/cli/`、`home/programs/` |
+| 系统构造器中的 Home Manager 设置 | `modules/home.nix` |
+| `lib/hardware-report.nix`、facter 测试报告 | 删除 |
 | `vars/default.nix` | `users.nix` |
 | `scripts/vps.sh` | 删除；`outputs/packages.nix` 直接导出安装器 |
-| CI 内临时生成的 VM 测试 | `tests/persistence.nix` |
+| CI 中的 VM 测试 | `tests/persistence.nix` |
 
-迁移已有配置时，先将真实公钥和身份信息移到 `users.nix`，将实际磁盘、静态网络和本机用户差异移到对应机器文件。不要用仓库中的空公钥模板覆盖已经工作的管理员凭据。
-
-`nixosConfigurations.vps`、`nix run .#install`、`.#nixos-anywhere`、`.#checks.x86_64-linux.install` 与 `.home` 等原有入口保留。配置布局改名不改变系统主机名。磁盘布局、管理员 UID 1000、SSH 主机密钥持久路径和兼容版本保持原值。
-
-已安装机器首次迁移应从其当前 NixOS 环境生成报告，而不是重新运行擦盘安装器：
+迁移已有配置时，保留真实管理员身份、公钥、磁盘和静态网络差异。已有硬件配置可直接迁入标准文件；也可在目标 NixOS 中执行以下命令生成新文件，再复制到本机并审查：
 
 ```bash
-# 在目标机器执行，输出文件是硬件信息，不是磁盘格式化指令
-sudo nix run nixpkgs#nixos-facter > facter.json
-# 将报告复制回本机 machines/vps/facter.json，审查并 git add
+sudo nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix
+# 复制回本机 machines/vps/hardware-configuration.nix，审查并 git add
 ```
 
-随后执行求值、构建、远程 `test` 和 `switch`。硬件报告生成的驱动可能随真实硬件不同；默认 DHCP 从上游生成规则匹配物理以太网，DNS 跟随服务商，因此原先自定义网络参数需要主动迁移。
+`--no-filesystems` 避免重复声明由 disko 管理的挂载点。已安装机器使用 `nixos-rebuild test` / `switch`，无需再次运行擦盘安装器。
+
+`nixosConfigurations.vps`、`nix run .#install`、`.#nixos-anywhere`、`.#checks.x86_64-linux.install` 与 `.home` 等入口保留。主机名、磁盘布局、管理员 UID 1000、SSH 主机密钥持久路径和兼容版本保持原值。

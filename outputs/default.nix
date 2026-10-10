@@ -28,7 +28,6 @@ in
       inherit lib users nixosConfigurations;
       pkgs = inputs.nixpkgs.legacyPackages.${system};
       source = inputs.self;
-      inherit (inputs) nixpkgs;
     }
   );
 }
