@@ -40,6 +40,7 @@
       packages.${system} = {
         install = pkgs.nixos-anywhere; # nix run .#install
         proxy = pkgs.callPackage ./proxy { }; # nix run .#proxy
+        proxy-setup = pkgs.callPackage ./proxy/setup.nix { }; # 初始化密文或 LiveCD
         # 保留直接运行 nix run . 和 .#nixos-anywhere 的入口。
         default = pkgs.nixos-anywhere;
         inherit (pkgs) nixos-anywhere;
