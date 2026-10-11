@@ -35,5 +35,8 @@ in
     after = [ "xray.service" ];
     inherit (proxy) environment;
   };
-  environment.systemPackages = [ (pkgs.callPackage ../../../proxy { }) ];
+  environment.systemPackages = [
+    (pkgs.callPackage ../../../proxy { })
+    (pkgs.callPackage ../../../proxy/setup.nix { })
+  ];
 }

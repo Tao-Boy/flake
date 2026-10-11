@@ -13,7 +13,7 @@
 | `modules/nixos/` | 可供机器选择的系统配置 |
 | `modules/home-manager.nix`、`disko.nix`、`sops.nix` | 接入对应外部模块 |
 | `home/` | 全部用户软件与 dotfiles，公共兼容版本在 `default.nix` |
-| `proxy/settings.nix`、`proxy/default.nix` | 共用代理设置、由 Nix 生成的快捷工具 |
+| `proxy/settings.nix`、`default.nix`、`setup.nix` | 共用代理设置、开关工具、密文与 LiveCD 初始化工具 |
 | `secrets/xray.yaml` | 用户初始化后提交的加密凭据 |
 
 `flake.nix` 只负责连接入口。主机名、平台、时区和功能取舍在机器目录中声明。共用模块定义功能，由机器显式导入。

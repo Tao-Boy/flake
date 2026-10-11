@@ -26,7 +26,7 @@ systemctl --failed
 journalctl -b -p warning
 systemctl status sshd fail2ban chronyd qemu-guest-agent
 systemctl status xray sops-install-secrets
-proxy status
+systemctl is-active xray
 networkctl status
 resolvectl status
 ip -br address

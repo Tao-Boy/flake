@@ -33,7 +33,7 @@ nix develop
 1. 在 `users.nix` 填写 `.pub` 文件的完整 SSH 公钥，默认管理员为 `tau`。
 2. 核对 `machines/vps/storage.nix` 的目标整盘，默认为 `/dev/vda`。
 3. 保留适用的 QEMU 硬件模板，或按[安装说明](docs/deployment.md)显式让 nixos-anywhere 生成硬件配置。网络默认使用 DHCP / IPv6 RA；服务商要求静态地址时在机器中补充。
-4. 运行 `nix run .#proxy -- init`，填写真实 VLESS + Reality 节点。私钥留在仓库外，按[代理说明](docs/proxy.md)部署到目标系统。
+4. 运行 `nix run .#proxy-setup -- init`，填写真实 VLESS + Reality 节点。私钥留在仓库外，按[代理说明](docs/proxy.md)部署到目标系统。
 
 ```bash
 git add users.nix machines/vps secrets/xray.yaml
