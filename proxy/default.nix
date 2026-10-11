@@ -168,7 +168,7 @@ pkgs.writeShellApplication {
       --help|-h)
         echo 'proxy init|edit|check [密文路径] [age 私钥路径]'
         echo 'sudo proxy live [密文路径] [age 私钥路径]  # LiveCD 临时启动'
-        echo 'sudo proxy on|off; proxy status; eval "$(proxy env)"'
+        echo "sudo proxy on|off; proxy status; eval \"\$(proxy env)\""
         ;;
       *)
         echo '未知操作；请运行 proxy --help。' >&2
