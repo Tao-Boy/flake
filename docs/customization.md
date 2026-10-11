@@ -65,19 +65,25 @@ disko.devices.disk.system.content.partitions.home.size = "8G";
 
 ## 新增机器
 
-复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
+复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports，并把 `networking.hostName` 改为 `"edge"`。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `flake.nix` 的 outputs 中，紧接 VPS 的定义增加：
 
 ```nix
-edge = ./edge;
+nixosConfigurations.edge = inputs.nixpkgs.lib.nixosSystem {
+  specialArgs = { inherit inputs users; };
+  modules = [ ./machines/edge ];
+};
 ```
 
-平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.${users.username} = ./home.nix;` 指定。不需要 Home Manager 的机器可移除该用户入口与 `modules/home-manager.nix` 导入。机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统；仅为选用 disko 的机器构建其脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.${users.username} = ./home.nix;` 指定。不需要 Home Manager 的机器可移除该用户入口与 `modules/home-manager.nix` 导入。新增机器也可以不导入 Xray 服务及 `home/programs/proxy.nix`，并移除 `sops.defaultSopsFile` 设置。
+
+CI 构建 flake 中明确声明的全部机器；仅为选用 disko 的机器构建其脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md)准备 age 私钥副本；选择启用 Xray 的机器需要部署该文件：
 
 ```bash
 git add machines home
 nix flake check --no-build --no-write-lock-file
 nix run .#install -- --flake .#edge --target-host root@YOUR_SERVER \
+  --extra-files "$PWD/work/extra-files" --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/edge/hardware-configuration.nix
 ```
 
-上面的安装会清空配置指定的磁盘。已安装机器使用 `nixos-rebuild test` / `switch` 更新。
+上面的安装会清空配置指定的磁盘。不启用 Xray 且无需额外文件的机器可省略 `--extra-files`。已安装机器使用 `nixos-rebuild test` / `switch` 更新。

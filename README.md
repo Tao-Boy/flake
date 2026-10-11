@@ -1,104 +1,68 @@
 # flake
 
-面向 x86_64 Linux VPS 的模块化 NixOS 配置。系统使用锁定的 NixOS 26.05 与 Home Manager，精选终端工具来自独立锁定的 nixpkgs-unstable。系统配置与用户环境分别放在 `modules/nixos/` 和 `home/`；硬件配置是用户管理的普通 Nix 文件，网络默认通过 DHCP / IPv6 RA 获取地址、路由与 DNS。
+面向 x86_64 Linux VPS 的 NixOS 配置，使用锁定的 NixOS 26.05 和 Home Manager。机器选择需要的功能，系统配置放在 `modules/`，用户软件放在 `home/`。
 
-## 目录与职责
+## 从哪里开始读
 
-| 目录或文件 | 职责 |
+1. [flake.nix](flake.nix)：声明依赖、列出机器、提供安装与开发工具。
+2. [machines/vps/default.nix](machines/vps/default.nix)：选择系统模块，设置主机名、平台和时区。
+3. [machines/vps/home.nix](machines/vps/home.nix)：选择这台机器的用户软件。
+4. 跟随 `imports` 打开相应模块，查看具体选项。Nix 基本语法见[结构说明](docs/architecture.md)。
+
+| 想修改什么 | 修改位置 |
 | --- | --- |
-| `flake.nix`、`flake.lock` | 声明并锁定输入 |
-| `machines/default.nix` | 机器名称与配置入口 |
-| `machines/vps/default.nix` | 系统模块选择、用户配置入口、平台与机器设置 |
-| `machines/vps/hardware-configuration.nix` | 用户管理的硬件配置，可选择由安装器生成 |
-| `machines/vps/storage.nix` | 选择存储布局、明确指定待安装的整块磁盘 |
-| `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
-| `modules/home-manager.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
-| `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
-| `modules/sops.nix` | 接入 sops-nix，使用仓库外的 age 私钥 |
-| `proxy/` | 共用 Xray 的 Nix 设置和由 Nix 生成的代理工具 |
-| `secrets/xray.yaml` | 用户初始化后提交的加密代理凭据 |
-| `home/default.nix` | 公共 Home Manager 兼容设置 |
-| `home/shell.nix`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
-| `machines/vps/home.nix` | 选择该机器启用的用户软件模块 |
-| `outputs.nix` | 系统、安装器、格式化器和开发环境输出 |
-| `users.nix` | 管理员身份与 SSH 公钥 |
-| `docs/` | 定制、部署与运维说明 |
+| 依赖版本、增加机器入口 | `flake.nix`；`flake.lock` 由 Nix 更新 |
+| 管理员与 SSH 公钥 | `users.nix` |
+| 主机名、时区、系统功能 | `machines/<name>/default.nix` |
+| 本机选择哪些用户软件 | `machines/<name>/home.nix` |
+| 软件的具体设置与 dotfiles | `home/shell.nix`、`home/cli/`、`home/programs/` |
+| 共用系统设置 | `modules/nixos/`；外部模块由 `modules/*.nix` 接入 |
+| 硬件与目标磁盘 | `machines/<name>/hardware-configuration.nix`、`storage.nix` |
+| 代理端口与协议、加密节点凭据 | `proxy/settings.nix`、`secrets/xray.yaml` |
 
-系统功能在 `machines/<name>/default.nix` 中从 `modules/` 选择，用户软件在 `machines/<name>/home.nix` 中从 `home/` 选择。共享文件只定义相应功能，结构与参考项目见[结构说明](docs/architecture.md)。
-
-## 最小配置与安装
+## 首次使用
 
 ```bash
 git clone https://github.com/Tao-Boy/flake.git
 cd flake
+nix develop
 ```
 
-1. 在 `users.nix` 填写完整 SSH 公钥；默认管理员为 `tau`，UID 为 1000。
-2. 在 `machines/vps/storage.nix` 核对目标整盘；默认为 `/dev/vda`，优先使用稳定的 by-id 路径。
-3. 决定保留适用于 QEMU VPS 的硬件模板，或在安装时生成真实硬件配置。
-4. 确认服务商支持 DHCP / IPv6 RA；静态网络在机器中补充[网络配置](docs/customization.md)。
-5. 执行 `nix run .#proxy -- init`，填写真实 VLESS + Reality 节点并提交 `secrets/xray.yaml`；按[代理说明](docs/proxy.md)准备部署 age 私钥。
+安装前准备四项：
 
-```nix
-# users.nix
-{
-  username = "tau";
-  sshKeys = [ "ssh-ed25519 你的完整公钥 you@laptop" ];
-}
-```
-
-新增 Nix 文件先 `git add`。填写真实公钥后检查：
+1. 在 `users.nix` 填写 `.pub` 文件的完整 SSH 公钥，默认管理员为 `tau`。
+2. 核对 `machines/vps/storage.nix` 的目标整盘，默认为 `/dev/vda`。
+3. 保留适用的 QEMU 硬件模板，或按[安装说明](docs/deployment.md)显式让 nixos-anywhere 生成硬件配置。网络默认使用 DHCP / IPv6 RA；服务商要求静态地址时在机器中补充。
+4. 运行 `nix run .#proxy -- init`，填写真实 VLESS + Reality 节点。私钥留在仓库外，按[代理说明](docs/proxy.md)部署到目标系统。
 
 ```bash
+git add users.nix machines/vps secrets/xray.yaml
 nix flake check --no-build --no-write-lock-file
 ```
 
-**安装会按 disko 布局清空目标磁盘。** 先备份数据并核对整盘。使用已准备好的硬件配置安装：
+**首次安装会清空指定磁盘。** 核对磁盘并备份后，按[安装与远程更新](docs/deployment.md)执行完整命令，其中包含 age 私钥部署。国内网络下的 LiveCD 临时代理、工具预复制和本机安装流程见[代理说明](docs/proxy.md)。
 
-```bash
-umask 077
-mkdir -p work/extra-files/nix/var/lib/sops-nix
-install -m 600 ~/.config/sops/age/keys.txt work/extra-files/nix/var/lib/sops-nix/key.txt
-nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local
-```
-
-若选择在安装时生成并替换硬件配置，显式添加上游参数：
-
-```bash
-nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local \
-  --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
-```
-
-`install` 直接引用锁定的 `nixos-anywhere` 包。只有用户指定生成参数时，安装器才写入硬件配置；仓库求值不执行硬件探测，也不根据报告是否存在改变导入。生成完成后审查并提交 Nix 文件。此后重建使用已保存的配置。磁盘擦除目标仍由用户明确指定，静态网络参数按服务商要求填写。
-
-## 存储与更新
-
-| 路径 | 存储 | 重启后 |
-| --- | --- | --- |
-| `/` | tmpfs，上限为内存的 50% | 清空，系统配置重新生成 |
-| `/nix` | ext4 分区，使用剩余磁盘空间 | 保留软件、系统代际与 SSH 主机密钥 |
-| `/home` | ext4 分区，默认 4 GiB | 保留用户文件与 Home Manager 数据 |
-| `/boot` | 512 MiB ESP | 保留启动文件 |
-
-`/home` 容量可在机器的 `storage.nix` 中覆盖；两个 ext4 分区分别计量空间。管理员 UID、SSH 策略及兼容版本保持原值。已有磁盘不能通过普通重建转换为新布局，迁移须先备份，再重新分区、安装并恢复数据；`/var` 的数据库、系统容器和 ACME 状态仍需单独持久化。
+## 日常修改
 
 ```bash
 nix develop
+nix fmt
+nix flake check --no-build --no-write-lock-file
 nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
-# 验证第二个 SSH 会话后持久化
+# 验证网络与第二个 SSH 会话后保存为启动默认配置。
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-CI 直接执行格式 / 静态检查、NixOS 求值、系统与已选用的 disko 脚本构建；Home Manager 随系统构建。仓库不保留测试目录或自定义 checks 输出。空公钥模板仅在 CI 工作区临时填入生成的公钥。
+`.#vps` 选择 flake 中的 `nixosConfigurations.vps`。新增 Nix 文件先 `git add`，再检查或重建。默认启用本地 Xray；Bash 中用 `proxy-on` / `proxy-off` 同时切换当前终端和 Nix 守护进程，重启后恢复默认开启。
 
-默认启用本地 Xray 代理，Bash 使用 `proxy-on` / `proxy-off` 同时切换终端和 Nix 守护进程的代理。NixOS LiveCD 可运行 `nix run .#proxy -- live` 临时启用同一配置；网络完全无法下载工具时，预先复制工具闭包。加密凭据、密钥部署和 LiveCD 本机安装的完整流程见[代理说明](docs/proxy.md)。
+根目录 `/` 使用 tmpfs，重启清空；`/home` 使用默认 4 GiB 的 ext4 分区，`/nix` 使用剩余空间的 ext4 分区。SSH 主机密钥与 age 私钥保存在 `/nix/var/lib/`。数据库、系统容器和 ACME 等 `/var` 状态需要额外安排持久存储。已有分区不能通过普通重建转换。
 
-- [目录设计与迁移](docs/architecture.md)
-- [定制与新增机器](docs/customization.md)
-- [安装与更新](docs/deployment.md)
-- [用户环境与软件源](docs/home-manager.md)
+CI 检查格式与静态分析，求值并构建各机器及其 disko 脚本，同时验证代理监听和快捷开关。详细说明：
+
+- [配置结构与基本语法](docs/architecture.md)
+- [定制配置与新增机器](docs/customization.md)
+- [安装与远程更新](docs/deployment.md)
+- [用户软件与软件源](docs/home-manager.md)
 - [可选服务](docs/services.md)
-- [Xray、加密凭据与 LiveCD 代理](docs/proxy.md)
-- [检查与运维](docs/operations.md)
+- [Xray、加密凭据与 LiveCD](docs/proxy.md)
+- [检查、回滚与备份](docs/operations.md)
