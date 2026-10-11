@@ -13,7 +13,7 @@ git add .
 nix flake check --no-build --no-write-lock-file
 ```
 
-**安装会清空目标磁盘。** 先备份 `/home`、应用数据及 `/nix/var/lib/sshd` 的主机私钥，保存正确权限与 UID。旧 ext4 布局不能通过重建转换为本仓库布局。
+**安装会清空目标磁盘。** 先备份 `/home`、应用数据及 `/nix/var/lib/sshd` 的主机私钥，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
 
 使用已经准备好的硬件配置：
 
@@ -47,7 +47,7 @@ nix run .#install -- --help
 
 ## 已安装机器
 
-已有系统迁移时保留当前有效的硬件配置，并迁移实际公钥、磁盘与静态网络参数。如需重新生成，在目标 NixOS 执行：
+已有系统更新时保留当前有效的硬件配置，并迁移实际公钥、磁盘与静态网络参数。若磁盘仍采用此前的子卷布局，应按首次安装流程备份并迁移至 ext4；下面的重建命令不会转换文件系统。如需重新生成，在目标 NixOS 执行：
 
 ```bash
 sudo nixos-generate-config --show-hardware-config --no-filesystems > hardware-configuration.nix

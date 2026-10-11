@@ -51,7 +51,15 @@ systemd.network.networks."10-uplink" = {
 
 `machines/vps/storage.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-共享布局在 `modules/nixos/storage/ephemeral-root.nix`：GPT、BIOS boot、ESP、Btrfs `/nix` 和 `/home`，加 tmpfs 根。它同时管理易失日志和持久 SSH 主机密钥；机器选择该布局后才应用这些策略。BIOS / UEFI 兼容设置和原布局保持一致。
+共享布局在 `modules/nixos/storage/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时管理易失日志和持久 SSH 主机密钥；机器选择该布局后才应用这些策略。BIOS / UEFI 兼容设置保留。
+
+`/home` 默认 4 GiB，`/nix` 使用剩余磁盘空间；两者是独立 ext4 分区，不共享空闲容量。在机器的 `storage.nix` 中调整家目录分区大小：
+
+```nix
+disko.devices.disk.system.content.partitions.home.size = "8G";
+```
+
+该值是安装时的分区策略，应结合磁盘容量和已有数据量确定；改值并重建不会自动调整已有分区。
 
 若需要持久根、加密或多盘，创建另一存储模块，在机器中选择它。通过 nixos-anywhere 生成的硬件文件不声明挂载点；手工生成时使用 `--no-filesystems`，以免与 disko 文件系统定义重复。
 

@@ -69,11 +69,11 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 | 路径 | 存储 | 重启后 |
 | --- | --- | --- |
 | `/` | tmpfs，上限为内存的 50% | 清空，系统配置重新生成 |
-| `/nix` | Btrfs 子卷 | 保留软件、系统代际与 SSH 主机密钥 |
-| `/home` | Btrfs 子卷 | 保留用户文件与 Home Manager 数据 |
+| `/nix` | ext4 分区，使用剩余磁盘空间 | 保留软件、系统代际与 SSH 主机密钥 |
+| `/home` | ext4 分区，默认 4 GiB | 保留用户文件与 Home Manager 数据 |
 | `/boot` | 512 MiB ESP | 保留启动文件 |
 
-目录调整保留上述布局、管理员 UID、SSH 策略以及 `system.stateVersion` / `home.stateVersion`。旧 ext4 根不能通过重建自动转成此布局；`/var` 的数据库、系统容器和 ACME 状态仍需单独持久化。
+`/home` 容量可在机器的 `storage.nix` 中覆盖；两个 ext4 分区分别计量空间。管理员 UID、SSH 策略及兼容版本保持原值。已有磁盘不能通过普通重建转换为新布局，迁移须先备份，再重新分区、安装并恢复数据；`/var` 的数据库、系统容器和 ACME 状态仍需单独持久化。
 
 ```bash
 nix develop
