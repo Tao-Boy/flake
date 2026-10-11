@@ -8,3 +8,6 @@
 *.key
 .env
 .env.*
+*.agekey
+/secrets/keys.txt
+/secrets/key.txt

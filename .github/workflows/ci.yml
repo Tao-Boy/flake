@@ -24,7 +24,7 @@ jobs:
           determinate: false
       - name: Verify the installer
         run: nix run --no-write-lock-file .#install -- --help
-      - name: Prepare a CI-only public key for an unconfigured template
+      - name: Prepare CI-only credentials for an unconfigured template
         run: |
           mkdir -p work
           if [ "$(nix eval --json --file users.nix sshKeys)" = '[]' ]; then
@@ -42,6 +42,17 @@ jobs:
           PY
           fi
           nix fmt -- users.nix
+          nix build --no-write-lock-file .#proxy --out-link work/proxy
+          nix develop --no-write-lock-file --command bash -euc '
+            age-keygen -o work/ci-age.agekey
+            sops --encrypt --age "$(age-keygen -y work/ci-age.agekey)" \
+              --input-type yaml --output-type yaml secrets/xray.example.yaml > work/ci-xray.yaml
+          '
+          if [ ! -f secrets/xray.yaml ]; then
+            cp work/ci-xray.yaml secrets/xray.yaml
+            git add --intent-to-add secrets/xray.yaml
+          fi
+          work/proxy/bin/proxy check work/ci-xray.yaml work/ci-age.agekey
       - name: Evaluate the flake and NixOS assertions
         run: nix flake check --no-build --no-write-lock-file --show-trace
       - name: Check Nix formatting and static analysis
@@ -61,3 +72,36 @@ jobs:
                 ".#nixosConfigurations.${machine}.config.system.build.diskoScript"
             fi
           done
+      - name: Verify the LiveCD proxy and runtime toggles
+        run: |
+          proxy="$PWD/work/proxy/bin/proxy"
+          trap 'sudo "$proxy" off >/dev/null 2>&1 || true' EXIT
+          sudo "$proxy" live "$PWD/work/ci-xray.yaml" "$PWD/work/ci-age.agekey"
+          "$proxy" status
+          python3 - <<'PY'
+          import socket
+          import time
+          for port in (1080, 1081):
+              deadline = time.monotonic() + 5
+              while True:
+                  try:
+                      with socket.create_connection(("127.0.0.1", port), timeout=1):
+                          break
+                  except OSError:
+                      if time.monotonic() >= deadline:
+                          raise
+                      time.sleep(0.1)
+          PY
+          eval "$("$proxy" env)"
+          test "$https_proxy" = http://127.0.0.1:1081
+          systemctl show nix-daemon.service --property=Environment --value | \
+            python3 -c 'import sys; assert "https_proxy=http://127.0.0.1:1081" in sys.stdin.read()'
+          sudo "$proxy" off
+          eval "$("$proxy" env)"
+          test -z "${https_proxy+x}"
+          if systemctl is-active --quiet xray-live.service; then exit 1; fi
+          systemctl show nix-daemon.service --property=Environment --value | \
+            python3 -c 'import sys; assert "http://127.0.0.1:1081" not in sys.stdin.read()'
+          sudo "$proxy" on
+          systemctl is-active --quiet xray-live.service
+          sudo "$proxy" off

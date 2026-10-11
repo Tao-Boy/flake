@@ -6,6 +6,7 @@
     ../../modules/nixos/security/ssh.nix
     ../../modules/nixos/security/hardening.nix
     ../../modules/nixos/services/maintenance.nix
+    ../../modules/nixos/services/xray.nix
     ../../modules/home-manager.nix
     ./hardware-configuration.nix
     ./storage.nix
@@ -13,6 +14,7 @@
 
   nixpkgs.hostPlatform = "x86_64-linux";
   home-manager.users.${users.username} = ./home.nix;
+  sops.defaultSopsFile = ../../secrets/xray.yaml;
   services.qemuGuest.enable = true;
   time.timeZone = "UTC";
   # 保留首次安装时的兼容版本，不随输入更新改变。

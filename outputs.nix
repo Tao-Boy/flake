@@ -24,6 +24,7 @@ in
     inherit (pkgs) nixos-anywhere;
     install = pkgs.nixos-anywhere;
     default = pkgs.nixos-anywhere;
+    proxy = pkgs.callPackage ./proxy { };
   };
   formatter.${system} = pkgs.nixfmt;
   devShells.${system}.default = pkgs.mkShell {
@@ -36,6 +37,8 @@ in
       pkgs.nixfmt
       pkgs.statix
       pkgs.deadnix
+      pkgs.sops
+      pkgs.age
     ];
   };
 }
