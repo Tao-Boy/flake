@@ -4,7 +4,7 @@
 
 本机需要支持 flakes 的 Nix、Git、SSH；目标需要 root SSH 或免密码 sudo、可用 kexec。当前模板面向 x86_64 KVM/QEMU VPS。
 
-填写 `users.nix` 的真实完整公钥，核对 `machines/vps/storage.nix` 的整盘路径，仅在服务商要求时声明静态网络。root 与管理员密码锁定，空公钥会触发 NixOS 登录保护断言。
+填写 `user.nix` 的真实完整公钥，核对 `machines/vps/storage.nix` 的整盘路径，仅在服务商要求时声明静态网络。root 与用户 `tau` 都没有密码；不填公钥时 NixOS 会拒绝构建，以免装好后无法登录。
 
 VPS 默认启用 Xray。先按[代理说明](proxy.md)用 `sops` 创建完整的 Xray JSON 并填写实际节点，提交 `.sops.yaml` 与 `secrets/xray.json`，并准备安装所需的 age 私钥副本：
 
@@ -56,7 +56,7 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 nix run .#install -- --help
 ```
 
-如需生成配置，在上述命令中追加同一生成参数即可。`.#nixos-anywhere` 与默认 `nix run .` 指向同一包。临时 kexec 环境通常使用 SSH 22，服务商防火墙需允许连接。非 Linux 本机需要 Linux 构建器或远端构建。安装完成后使用 `ssh tau@YOUR_SERVER`；root SSH 和密码登录关闭。
+如需生成配置，在上述命令中追加同一生成参数即可。临时 kexec 环境通常使用 SSH 22，服务商防火墙需允许连接。非 Linux 本机需要 Linux 构建器或远端构建。安装完成后使用 `ssh tau@YOUR_SERVER`；root SSH 和密码登录关闭。
 
 上述 `--build-on local` 使用安装命令所在的独立 Linux 构建机，避免目标进入 kexec 后再依赖 LiveCD 临时代理构建。代理环境不会自动传入目标的 kexec 环境；同一台 LiveCD 本机安装采用[代理说明中的 disko 与 nixos-install 流程](proxy.md)。
 
@@ -77,7 +77,7 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-`test` 临时激活，`switch` 同时更新启动默认项，`boot` 仅更新下次启动。管理员通过免密码 sudo 激活系统，Home Manager 同步更新。tmpfs 根不会丢失 `/nix` 的系统代际和 `/boot` 的启动配置。
+`test` 临时激活，`switch` 同时更新启动默认项，`boot` 仅更新下次启动。用户 `tau` 通过免密码 sudo 激活系统，Home Manager 同步更新。tmpfs 根不会丢失 `/nix` 的系统代际和 `/boot` 的启动配置。
 
 私钥与端口可写在本机 SSH 配置：
 

@@ -1,8 +1,8 @@
 {
-  imports = [ ../../modules/nixos/storage/ephemeral-root.nix ];
-  # 需要明确核对的存储参数：安装将擦除此整盘，不能根据大小盲选。
-  # 有稳定的 /dev/disk/by-id/... 时优先采用它。
+  imports = [ ../../modules/ephemeral-root.nix ];
+
+  # 安装会擦除这块整盘，请用 lsblk 核对；有 /dev/disk/by-id/... 时优先使用它。
   disko.devices.disk.system.device = "/dev/vda";
-  # /home 默认 4 GiB，/nix 使用剩余空间；需要时覆盖共享默认值。
-  # disko.devices.disk.system.content.partitions.home.size = "8G";
+  # /home 分区大小；/nix 使用剩余空间。只在首次安装分区时生效。
+  disko.devices.disk.system.content.partitions.home.size = "4G";
 }

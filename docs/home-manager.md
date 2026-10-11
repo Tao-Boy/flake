@@ -13,7 +13,7 @@
 }
 ```
 
-这是精简选择示例；实际 VPS 还选择诊断、网络工具、Neovim 和 tmux。公共兼容版本由 `modules/nixos/home-manager.nix` 统一加载，机器只选择软件。
+这是精简选择示例；实际 VPS 还选择诊断、网络工具、Neovim 和 tmux。公共兼容版本由 `modules/home-manager.nix` 统一加载，机器只选择软件。
 
 | 内容 | 位置 |
 | --- | --- |
@@ -24,7 +24,7 @@
 | 网络诊断工具 | `home/cli/network.nix` |
 | Git、Neovim、tmux | `home/programs/` |
 | 每台机器的软件选择 | `machines/<name>/home.nix` |
-| Home Manager 接入 | `modules/nixos/home-manager.nix` |
+| Home Manager 接入 | `modules/home-manager.nix` |
 
 新增软件时，先在 `home/` 编写配置，例如：
 
@@ -36,7 +36,7 @@
 }
 ```
 
-再在需要该软件的 `machines/<name>/home.nix` 的 imports 中加入 `../../home/programs/sqlite.nix`。机器的系统入口导入 `modules/nixos/home-manager.nix`，并设置 `home-manager.users.${config.local.admin.name} = ./home.nix;`。代理开关 `proxy-on` / `proxy-off` 由系统的代理模块提供，不属于用户软件。取消软件导入即可改变该机器的软件选择，共享软件文件保持独立。
+再在需要该软件的 `machines/<name>/home.nix` 的 imports 中加入 `../../home/programs/sqlite.nix`。机器的系统入口导入 `modules/home-manager.nix`，并设置 `home-manager.users.tau = ./home.nix;`。代理开关 `proxy-on` / `proxy-off` 由系统的代理模块提供，不属于用户软件。取消软件导入即可改变该机器的软件选择，共享软件文件保持独立。
 
 Git 作者信息统一写入 `home/programs/git.nix` 的 `programs.git.settings.user`，其他程序的选项也放在对应软件文件。
 
