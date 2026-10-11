@@ -14,6 +14,5 @@
     };
   };
 
-  # 将软件源 inputs 传给 outputs/default.nix，由它定义主机和部署命令。
-  outputs = inputs: import ./outputs/default.nix inputs;
+  outputs = inputs: import ./outputs.nix inputs;
 }

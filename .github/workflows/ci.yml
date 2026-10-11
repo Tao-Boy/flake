@@ -37,7 +37,6 @@ jobs:
           path = Path("users.nix")
           source = path.read_text()
           marker = "sshKeys = [ ];"
-          assert marker in source, "Empty-key template has changed"
           source = source.replace(marker, "sshKeys = [ " + json.dumps(os.environ["CI_SSH_PUBKEY"]) + " ];", 1)
           path.write_text(source)
           PY

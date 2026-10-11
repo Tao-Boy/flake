@@ -19,7 +19,6 @@
     fzf = {
       enable = true;
       package = pkgsUnstable.fzf;
-      enableBashIntegration = true;
     };
     bat = {
       enable = true;

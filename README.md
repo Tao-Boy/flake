@@ -7,17 +7,17 @@
 | 目录或文件 | 职责 |
 | --- | --- |
 | `flake.nix`、`flake.lock` | 声明并锁定输入 |
-| `machines/default.nix` | 机器清单，指定系统入口和用户软件选择入口 |
-| `machines/vps/default.nix` | 本地配置入口、时区和系统兼容版本 |
+| `machines/default.nix` | 机器名称与配置入口 |
+| `machines/vps/default.nix` | 系统模块选择、用户配置入口、平台与机器设置 |
 | `machines/vps/hardware-configuration.nix` | 用户管理的硬件配置，可选择由安装器生成 |
 | `machines/vps/storage.nix` | 选择存储布局、明确指定待安装的整块磁盘 |
 | `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
 | `modules/home-manager.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
 | `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
 | `home/default.nix` | 公共 Home Manager 兼容设置 |
-| `home/shell/`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
+| `home/shell.nix`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
 | `machines/vps/home.nix` | 选择该机器启用的用户软件模块 |
-| `outputs/default.nix` | 系统、安装器、格式化器和开发环境输出 |
+| `outputs.nix` | 系统、安装器、格式化器和开发环境输出 |
 | `users.nix` | 管理员身份与 SSH 公钥 |
 | `docs/` | 定制、部署与运维说明 |
 
