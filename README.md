@@ -18,7 +18,8 @@
 | 软件的具体设置与 dotfiles | `home/shell.nix`、`home/cli/`、`home/programs/` |
 | 共用系统设置 | `modules/nixos/`；外部模块由 `modules/*.nix` 接入 |
 | 硬件与目标磁盘 | `machines/<name>/hardware-configuration.nix`、`storage.nix` |
-| 代理端口与协议、加密节点凭据 | `proxy/settings.nix`、`secrets/xray.yaml` |
+| 原生 Xray 配置（加密 JSON） | `secrets/xray.json`，通过 `proxy-setup edit` 修改 |
+| 终端与 Nix 的本地代理地址 | `proxy/environment.nix`，与 JSON 监听端口一致 |
 
 ## 首次使用
 
@@ -33,10 +34,10 @@ nix develop
 1. 在 `users.nix` 填写 `.pub` 文件的完整 SSH 公钥，默认管理员为 `tau`。
 2. 核对 `machines/vps/storage.nix` 的目标整盘，默认为 `/dev/vda`。
 3. 保留适用的 QEMU 硬件模板，或按[安装说明](docs/deployment.md)显式让 nixos-anywhere 生成硬件配置。网络默认使用 DHCP / IPv6 RA；服务商要求静态地址时在机器中补充。
-4. 运行 `nix run .#proxy-setup -- init`，填写真实 VLESS + Reality 节点。私钥留在仓库外，按[代理说明](docs/proxy.md)部署到目标系统。
+4. 运行 `nix run .#proxy-setup -- init`，编辑完整的 Xray JSON，填写真实节点。私钥留在仓库外，按[代理说明](docs/proxy.md)部署到目标系统。
 
 ```bash
-git add users.nix machines/vps secrets/xray.yaml
+git add users.nix machines/vps secrets/xray.json
 nix flake check --no-build --no-write-lock-file
 ```
 

@@ -1,10 +1,10 @@
 { lib, ... }:
 let
-  proxy = import ../../proxy/settings.nix { inherit lib; };
+  proxyEnvironment = import ../../proxy/environment.nix { inherit lib; };
   environmentOn = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") proxy.environment
+    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") proxyEnvironment
   );
-  environmentOff = "unset ${lib.concatStringsSep " " (builtins.attrNames proxy.environment)}";
+  environmentOff = "unset ${lib.concatStringsSep " " (builtins.attrNames proxyEnvironment)}";
 in
 {
   programs.bash.initExtra = ''

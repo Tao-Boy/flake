@@ -18,7 +18,7 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.hostName = "vps";
   home-manager.users.${users.username} = ./home.nix;
-  sops.defaultSopsFile = ../../secrets/xray.yaml;
+  sops.defaultSopsFile = ../../secrets/xray.json;
   services.qemuGuest.enable = true;
   time.timeZone = "UTC";
   # 保留首次安装时的兼容版本，不随输入更新改变。

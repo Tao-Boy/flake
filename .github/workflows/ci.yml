@@ -26,6 +26,7 @@ jobs:
         run: nix run --no-write-lock-file .#install -- --help
       - name: Prepare CI-only credentials for an unconfigured template
         run: |
+          umask 077
           mkdir -p work
           if [ "$(nix eval --json --file users.nix sshKeys)" = '[]' ]; then
             ssh-keygen -q -t ed25519 -N "" -f work/ci-key
@@ -47,13 +48,22 @@ jobs:
           nix develop --no-write-lock-file --command bash -euc '
             age-keygen -o work/ci-age.agekey
             sops --encrypt --age "$(age-keygen -y work/ci-age.agekey)" \
-              --input-type yaml --output-type yaml secrets/xray.example.yaml > work/ci-xray.yaml
+              --input-type json --output-type json secrets/xray.example.json > work/ci-xray.json
+            SOPS_AGE_KEY_FILE="$PWD/work/ci-age.agekey" sops --decrypt \
+              --input-type json --output-type json work/ci-xray.json > work/ci-xray.plain.json
           '
-          if [ ! -f secrets/xray.yaml ]; then
-            cp work/ci-xray.yaml secrets/xray.yaml
-            git add --intent-to-add secrets/xray.yaml
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          original = json.loads(Path("secrets/xray.example.json").read_text())
+          decrypted = json.loads(Path("work/ci-xray.plain.json").read_text())
+          assert original == decrypted, "Encrypted JSON did not round-trip"
+          PY
+          if [ ! -f secrets/xray.json ]; then
+            cp work/ci-xray.json secrets/xray.json
+            git add --intent-to-add secrets/xray.json
           fi
-          work/proxy-setup/bin/proxy-setup check work/ci-xray.yaml work/ci-age.agekey
+          work/proxy-setup/bin/proxy-setup check work/ci-xray.json work/ci-age.agekey
       - name: Evaluate the flake and NixOS assertions
         run: nix flake check --no-build --no-write-lock-file --show-trace
       - name: Check Nix formatting and static analysis
@@ -77,7 +87,7 @@ jobs:
         run: |
           proxy="$PWD/work/proxy/bin/proxy"
           trap 'sudo "$proxy" off >/dev/null 2>&1 || true' EXIT
-          sudo work/proxy-setup/bin/proxy-setup live "$PWD/work/ci-xray.yaml" "$PWD/work/ci-age.agekey"
+          sudo work/proxy-setup/bin/proxy-setup live "$PWD/work/ci-xray.json" "$PWD/work/ci-age.agekey"
           systemctl is-active --quiet xray.service
           python3 - <<'PY'
           import socket

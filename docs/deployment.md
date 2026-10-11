@@ -6,7 +6,7 @@
 
 填写 `users.nix` 的真实完整公钥，核对 `machines/vps/storage.nix` 的整盘路径，仅在服务商要求时声明静态网络。root 与管理员密码锁定，空公钥会触发 NixOS 登录保护断言。
 
-VPS 默认启用 Xray。先执行 `nix run .#proxy-setup -- init` 填写实际节点，提交 `secrets/xray.yaml`，并准备安装所需的 age 私钥副本：
+VPS 默认启用 Xray。先执行 `nix run .#proxy-setup -- init` 编辑完整的 Xray JSON 并填写实际节点，提交 `secrets/xray.json`，并准备安装所需的 age 私钥副本：
 
 ```bash
 umask 077

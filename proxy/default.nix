@@ -1,22 +1,22 @@
 { lib, pkgs }:
 let
-  proxy = import ./settings.nix { inherit lib; };
+  proxyEnvironment = import ./environment.nix { inherit lib; };
   daemonOn = pkgs.writeText "proxy-on.conf" (
     "[Service]\n"
     + lib.concatStringsSep "\n" (
-      lib.mapAttrsToList (name: value: ''Environment="${name}=${value}"'') proxy.environment
+      lib.mapAttrsToList (name: value: ''Environment="${name}=${value}"'') proxyEnvironment
     )
   );
   daemonOff = pkgs.writeText "proxy-off.conf" (
     "[Service]\n"
     + lib.concatStringsSep "\n" (
-      lib.mapAttrsToList (name: _: ''Environment="${name}="'') proxy.environment
+      lib.mapAttrsToList (name: _: ''Environment="${name}="'') proxyEnvironment
     )
   );
   environmentOn = lib.concatStringsSep "\n" (
-    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") proxy.environment
+    lib.mapAttrsToList (name: value: "export ${name}=${lib.escapeShellArg value}") proxyEnvironment
   );
-  environmentOff = "unset ${lib.concatStringsSep " " (builtins.attrNames proxy.environment)}";
+  environmentOff = "unset ${lib.concatStringsSep " " (builtins.attrNames proxyEnvironment)}";
 in
 pkgs.writeShellApplication {
   name = "proxy";

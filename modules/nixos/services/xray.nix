@@ -5,21 +5,19 @@
   ...
 }:
 let
-  proxy = import ../../../proxy/settings.nix { inherit lib; };
-  secrets = lib.genAttrs proxy.secretNames (name: config.sops.placeholder."xray/${name}");
+  environment = import ../../../proxy/environment.nix { inherit lib; };
 in
 {
   imports = [ ../../sops.nix ];
-  sops.secrets = lib.genAttrs (map (name: "xray/${name}") proxy.secretNames) (_: { });
-  sops.templates.xray = {
-    content = builtins.toJSON (proxy.settings secrets);
+  sops.secrets."xray.json" = {
+    format = "json";
+    key = ""; # 解密整份原生 Xray JSON，不提取字段或生成模板。
     restartUnits = [ "xray.service" ];
   };
-  services.xray = {
-    enable = true;
-    settingsFile = config.sops.templates.xray.path;
-  };
+
   systemd.services.xray = {
+    description = "Xray proxy";
+    wantedBy = [ "multi-user.target" ];
     after = [
       "sops-install-secrets.service"
       "network-online.target"
@@ -27,13 +25,17 @@ in
     requires = [ "sops-install-secrets.service" ];
     wants = [ "network-online.target" ];
     serviceConfig = {
+      DynamicUser = true;
+      LoadCredential = "config.json:${config.sops.secrets."xray.json".path}";
+      ExecStart = "${pkgs.xray}/bin/xray run -config %d/config.json";
       Restart = "on-failure";
       RestartSec = "5s";
+      NoNewPrivileges = true;
     };
   };
   systemd.services.nix-daemon = {
     after = [ "xray.service" ];
-    inherit (proxy) environment;
+    inherit environment;
   };
   environment.systemPackages = [
     (pkgs.callPackage ../../../proxy { })
