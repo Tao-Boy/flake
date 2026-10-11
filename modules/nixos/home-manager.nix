@@ -6,7 +6,7 @@
     useGlobalPkgs = true;
     useUserPackages = true;
     backupFileExtension = "hm-backup";
-    sharedModules = [ ../home ];
+    sharedModules = [ ../../home ];
     extraSpecialArgs.pkgsUnstable =
       inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system};
   };

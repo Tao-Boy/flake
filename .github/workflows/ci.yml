@@ -13,109 +13,22 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+# 检查逻辑都在 flake.nix 的 checks 中，本地可用同样的 nix build 命令复现。
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      # 安装器默认为 GitHub 运行器启用 KVM，供 NixOS 虚拟机测试使用。
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           determinate: false
+      - name: Formatting and static analysis
+        run: nix build --no-link --no-write-lock-file --print-build-logs .#checks.x86_64-linux.lint
+      - name: Build the vps system and disk script
+        run: nix build --no-link --no-write-lock-file --print-build-logs .#checks.x86_64-linux.vps
+      - name: Test the proxy switch in a NixOS VM
+        run: nix build --no-link --no-write-lock-file --print-build-logs .#checks.x86_64-linux.proxy
       - name: Verify the installer
         run: nix run --no-write-lock-file .#install -- --help
-      - name: Prepare CI-only credentials for an unconfigured template
-        run: |
-          umask 077
-          mkdir -p work
-          if [ "$(nix eval --json --file users.nix sshKeys)" = '[]' ]; then
-            ssh-keygen -q -t ed25519 -N "" -f work/ci-key
-            export CI_SSH_PUBKEY="$(cat work/ci-key.pub)"
-            python3 - <<'PY'
-          import json
-          import os
-          from pathlib import Path
-          path = Path("users.nix")
-          source = path.read_text()
-          marker = "sshKeys = [ ];"
-          source = source.replace(marker, "sshKeys = [ " + json.dumps(os.environ["CI_SSH_PUBKEY"]) + " ];", 1)
-          path.write_text(source)
-          PY
-          fi
-          nix fmt -- users.nix
-          nix build --no-write-lock-file .#proxy --out-link work/proxy
-          nix build --no-write-lock-file .#proxy-setup --out-link work/proxy-setup
-          nix develop --no-write-lock-file --command bash -euc '
-            age-keygen -o work/ci-age.agekey
-            sops --encrypt --age "$(age-keygen -y work/ci-age.agekey)" \
-              --input-type json --output-type json secrets/xray.example.json > work/ci-xray.json
-            SOPS_AGE_KEY_FILE="$PWD/work/ci-age.agekey" sops --decrypt \
-              --input-type json --output-type json work/ci-xray.json > work/ci-xray.plain.json
-          '
-          python3 - <<'PY'
-          import json
-          from pathlib import Path
-          original = json.loads(Path("secrets/xray.example.json").read_text())
-          decrypted = json.loads(Path("work/ci-xray.plain.json").read_text())
-          assert original == decrypted, "Encrypted JSON did not round-trip"
-          PY
-          if [ ! -f secrets/xray.json ]; then
-            cp work/ci-xray.json secrets/xray.json
-            git add --intent-to-add secrets/xray.json
-          fi
-          work/proxy-setup/bin/proxy-setup check work/ci-xray.json work/ci-age.agekey
-      - name: Evaluate the flake and NixOS assertions
-        run: nix flake check --no-build --no-write-lock-file --show-trace
-      - name: Check Nix formatting and static analysis
-        run: |
-          nix develop --no-write-lock-file --command bash -euc '
-            nixfmt --check $(git ls-files "*.nix")
-            statix check .
-            deadnix --fail .
-          '
-      - name: Build the systems and selected disk scripts
-        run: |
-          for machine in $(nix eval --raw .#nixosConfigurations --apply 'machines: builtins.concatStringsSep " " (builtins.attrNames machines)'); do
-            nix build --no-link --no-write-lock-file --print-build-logs \
-              ".#nixosConfigurations.${machine}.config.system.build.toplevel"
-            if [ "$(nix eval --json --no-write-lock-file ".#nixosConfigurations.${machine}.config.system.build" --apply 'builtins.hasAttr "diskoScript"')" = true ]; then
-              nix build --no-link --no-write-lock-file --print-build-logs \
-                ".#nixosConfigurations.${machine}.config.system.build.diskoScript"
-            fi
-          done
-      - name: Verify the LiveCD proxy and runtime toggles
-        run: |
-          proxy="$PWD/work/proxy/bin/proxy"
-          trap 'sudo "$proxy" off >/dev/null 2>&1 || true' EXIT
-          sudo work/proxy-setup/bin/proxy-setup live "$PWD/work/ci-xray.json" "$PWD/work/ci-age.agekey"
-          systemctl is-active --quiet xray.service
-          python3 - <<'PY'
-          import socket
-          import time
-          for port in (1080, 1081):
-              deadline = time.monotonic() + 5
-              while True:
-                  try:
-                      with socket.create_connection(("127.0.0.1", port), timeout=1):
-                          break
-                  except OSError:
-                      if time.monotonic() >= deadline:
-                          raise
-                      time.sleep(0.1)
-          PY
-          environment=$(sudo "$proxy" on)
-          eval "$environment"
-          test "$https_proxy" = http://127.0.0.1:1081
-          systemctl show nix-daemon.service --property=Environment --value | \
-            python3 -c 'import sys; assert "https_proxy=http://127.0.0.1:1081" in sys.stdin.read()'
-          environment=$(sudo "$proxy" off)
-          eval "$environment"
-          test -z "${https_proxy+x}"
-          if systemctl is-active --quiet xray.service; then exit 1; fi
-          systemctl show nix-daemon.service --property=Environment --value | \
-            python3 -c 'import sys; assert "http://127.0.0.1:1081" not in sys.stdin.read()'
-          environment=$(sudo "$proxy" on)
-          eval "$environment"
-          test "$https_proxy" = http://127.0.0.1:1081
-          systemctl is-active --quiet xray.service
-          sudo "$proxy" off >/dev/null

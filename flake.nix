@@ -21,29 +21,78 @@
     };
   };
 
-  # outputs：可构建的系统，以及 nix run / nix develop 使用的工具。
+  # outputs：可构建的系统、检查，以及 nix run / nix develop 使用的工具。
   outputs =
     inputs:
     let
-      # 这里的平台用于安装器和开发工具；机器的平台在机器配置中设置。
+      inherit (inputs.nixpkgs) lib;
+      # 这里的平台用于工具和检查；机器的平台在机器配置中设置。
       system = "x86_64-linux";
       pkgs = inputs.nixpkgs.legacyPackages.${system};
-      users = import ./users.nix;
+
+      # 每台机器由共享的管理员身份和自己的目录组成。
+      mkMachine =
+        path:
+        lib.nixosSystem {
+          specialArgs = { inherit inputs; };
+          modules = [
+            ./users.nix
+            path
+          ];
+        };
+
+      # 构建机器的系统闭包与 disko 脚本；未填写的模板由 tests/template.nix 补齐。
+      checkMachine =
+        name:
+        let
+          inherit
+            (inputs.self.nixosConfigurations.${name}.extendModules { modules = [ ./tests/template.nix ]; })
+            config
+            ;
+        in
+        pkgs.linkFarm "machine-${name}" (
+          {
+            system = config.system.build.toplevel;
+          }
+          // lib.optionalAttrs (config.system.build ? diskoScript) {
+            disko = config.system.build.diskoScript;
+          }
+        );
     in
     {
-      # .#vps 对应这台机器；新增机器时复制此块并修改名称和路径。
-      nixosConfigurations.vps = inputs.nixpkgs.lib.nixosSystem {
-        specialArgs = { inherit inputs users; };
-        modules = [ ./machines/vps ];
+      # .#vps 对应这台机器；新增机器时在这里加一行，并在 checks 中加入同名检查。
+      nixosConfigurations = {
+        vps = mkMachine ./machines/vps;
+      };
+
+      # nix flake check / CI 运行的检查。
+      checks.${system} = {
+        vps = checkMachine "vps";
+        proxy = pkgs.testers.runNixOSTest (import ./tests/proxy.nix { inherit inputs; });
+        lint =
+          pkgs.runCommand "lint"
+            {
+              nativeBuildInputs = [
+                pkgs.nixfmt
+                pkgs.statix
+                pkgs.deadnix
+              ];
+            }
+            ''
+              cd ${inputs.self}
+              nixfmt --check $(find . -name '*.nix')
+              statix check .
+              deadnix --fail .
+              touch $out
+            '';
       };
 
       packages.${system} = {
         install = pkgs.nixos-anywhere; # nix run .#install
-        proxy = pkgs.callPackage ./proxy { }; # nix run .#proxy
-        proxy-setup = pkgs.callPackage ./proxy/setup.nix { }; # 初始化密文或 LiveCD
         # 保留直接运行 nix run . 和 .#nixos-anywhere 的入口。
         default = pkgs.nixos-anywhere;
-        inherit (pkgs) nixos-anywhere;
+        # LiveCD 临时代理使用的锁定版本工具，可预先 nix copy 到目标。
+        inherit (pkgs) nixos-anywhere sops xray;
       };
 
       formatter.${system} = pkgs.nixfmt; # nix fmt
@@ -60,6 +109,7 @@
           pkgs.deadnix
           pkgs.sops
           pkgs.age
+          pkgs.xray
         ];
       };
     };
