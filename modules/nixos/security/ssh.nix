@@ -1,4 +1,4 @@
-{ users, ... }:
+{ config, ... }:
 {
   services.openssh = {
     enable = true;
@@ -6,7 +6,7 @@
       PasswordAuthentication = false;
       KbdInteractiveAuthentication = false;
       PermitRootLogin = "no";
-      AllowUsers = [ users.username ];
+      AllowUsers = [ config.local.admin.name ];
       MaxAuthTries = 3;
       LoginGraceTime = 30;
       ClientAliveInterval = 300;

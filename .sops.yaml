@@ -1,0 +1,6 @@
+# sops 加密 secrets/ 中的 JSON 时使用的 age 公钥（公钥可以公开）。
+# 将占位值替换为 `age-keygen -y ~/.config/sops/age/keys.txt` 的输出；
+# 修改公钥后用 `sops updatekeys secrets/xray.json` 重新加密已有文件。
+creation_rules:
+  - path_regex: secrets/.*\.json$
+    age: age1REPLACE_WITH_YOUR_AGE_PUBLIC_KEY

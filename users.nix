@@ -1,7 +1,10 @@
 {
-  # 修改一次用户名，系统账号、SSH 和 Home Manager 会使用同一个值。
-  username = "tau";
+  imports = [ ./modules/nixos/admin.nix ];
 
-  # 粘贴 .pub 文件的完整一行；保持空列表时，系统检查会阻止无凭据部署。
-  sshKeys = [ ];
+  # 所有机器共用的管理员身份；修改后系统账号、SSH 和 Home Manager 同步生效。
+  local.admin = {
+    name = "tau";
+    # 粘贴 .pub 文件的完整一行；保持空列表时，求值会以断言阻止无凭据部署。
+    sshKeys = [ ];
+  };
 }

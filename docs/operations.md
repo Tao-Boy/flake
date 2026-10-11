@@ -2,22 +2,25 @@
 
 ## 修改后验证
 
-先填写真实 SSH 公钥，新增文件执行 `git add`。本地开发环境包含 Nix、nixfmt、statix、deadnix、安装器。
+先填写真实 SSH 公钥，新增文件执行 `git add`。本地开发环境包含 Nix、nixfmt、statix、deadnix、sops、Xray 与安装器。
 
 ```bash
 nix develop
 nix fmt
-nix flake check --no-build --no-write-lock-file
-nix develop --command statix check .
-nix develop --command deadnix --fail .
-nix build --no-link --no-write-lock-file \
-  .#nixosConfigurations.vps.config.system.build.toplevel \
-  .#nixosConfigurations.vps.config.system.build.diskoScript
+nix flake check --no-write-lock-file
 ```
 
-系统构建包含 Home Manager；构建 disko 脚本不会执行格式化。CI 构建 `flake.nix` 中声明的每台机器，并在机器选用 disko 时构建对应脚本，不运行安装和重启测试，也不需要 KVM。
+`nix flake check` 求值全部机器并运行 `flake.nix` 中的检查。也可以单独运行，与 CI 的步骤一致：
 
-CI 只在工作区为空公钥模板生成临时公钥，不连接 VPS、不写回仓库。实际配置仍须填写真实公钥。
+| 检查 | 命令 | 内容 |
+| --- | --- | --- |
+| `lint` | `nix build .#checks.x86_64-linux.lint` | nixfmt 格式、statix、deadnix |
+| `vps` | `nix build .#checks.x86_64-linux.vps` | 系统闭包（含 Home Manager 与 `proxy-off` 特化）和 disko 脚本 |
+| `proxy` | `nix build .#checks.x86_64-linux.proxy` | NixOS 虚拟机中验证 Xray 监听与 `proxy-on` / `proxy-off` |
+
+构建 disko 脚本不会执行格式化。虚拟机测试需要 KVM；GitHub 运行器由 Nix 安装步骤自动启用。CI 不运行安装和重启测试，不连接 VPS、不写回仓库。
+
+机器检查通过 `tests/template.nix` 构建：追加一把占位公钥，并在仓库还没有 `secrets/xray.json` 时改用明文示例，因此未填写的模板也能通过 CI。产物不用于部署；实际部署仍须填写真实公钥和密文，否则 `nixosConfigurations` 的断言会阻止构建。
 
 ## 服务与网络
 
@@ -26,6 +29,7 @@ systemctl --failed
 journalctl -b -p warning
 systemctl status sshd fail2ban chronyd qemu-guest-agent
 systemctl status xray sops-install-secrets
+ls /run/current-system/specialisation/   # 存在 proxy-off 说明当前为默认配置
 systemctl is-active xray
 networkctl status
 resolvectl status
