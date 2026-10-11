@@ -16,6 +16,22 @@ install -m 600 ~/.config/sops/age/keys.txt work/extra-files/home/tau/.ssh/age.ke
 
 安装后私钥位于目标机器的 `/home/tau/.ssh/age.key`；`~/.ssh` 的归属在开机时自动改为 `tau`。使用已有私钥时替换源路径。私钥留在仓库外，`work/` 中的副本不会被 Git 跟踪。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
 
+### SSH 主机密钥
+
+主机密钥也用同一把 age 公钥加密进仓库（`secrets/ssh_host_ed25519_key`），开机时由 sops-nix 解密到 `/run/secrets/`，重装后指纹不变。在开发环境中生成并加密：
+
+```bash
+nix develop
+umask 077
+mkdir -p work/hostkey
+ssh-keygen -t ed25519 -N "" -C vps -f work/hostkey/ssh_host_ed25519_key
+sops encrypt --filename-override secrets/ssh_host_ed25519_key \
+  work/hostkey/ssh_host_ed25519_key > secrets/ssh_host_ed25519_key
+git add secrets/ssh_host_ed25519_key
+```
+
+`work/hostkey/ssh_host_ed25519_key.pub` 是主机公钥，可以写入本机的 `~/.ssh/known_hosts`（`YOUR_SERVER ssh-ed25519 AAAA...`），之后连接时不再需要人工核对指纹；明文私钥用完后删除。系统只使用 ed25519 主机密钥。查看或更换时使用 `sops decrypt secrets/ssh_host_ed25519_key`，或按上面的命令重新生成。
+
 硬件配置由用户控制。`machines/vps/hardware-configuration.nix` 是通用 QEMU 模板，可以保留适用的配置、替换为已有配置，或显式选择由安装器生成。安装入口直接使用锁定的上游 `nixos-anywhere`，不提供探测包装脚本。
 
 ```bash
@@ -23,7 +39,7 @@ git add .
 nix flake check --no-build --no-write-lock-file
 ```
 
-**安装会清空目标磁盘。** 先备份 `/home`（其中 `~/.ssh` 含主机私钥与 age 私钥）和应用数据，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
+**安装会清空目标磁盘。** 先备份 `/home`（其中 `~/.ssh/age.key` 是解密私钥）和应用数据，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
 
 使用已经准备好的硬件配置：
 
@@ -62,17 +78,27 @@ nix run .#install -- --help
 
 ## 已安装机器
 
-### 密钥从 /nix 迁到 ~/.ssh
+### 从旧版本迁移密钥
 
-旧版本把 SSH 主机密钥放在 `/nix/var/lib/sshd`，age 私钥放在 `/nix/var/lib/sops-nix/key.txt`。重建到当前配置**之前**，先在服务器上复制到新位置，否则会生成新的主机密钥（客户端提示指纹变化），Xray 配置也无法解密：
+旧版本把 SSH 主机密钥放在 `/nix/var/lib/sshd`，age 私钥放在 `/nix/var/lib/sops-nix/key.txt`。重建到当前配置**之前**完成两步，否则 Xray 配置无法解密，主机密钥也会变化（客户端提示指纹变化）。
+
+在本机把服务器现有的主机私钥加密进仓库，保持指纹不变：
+
+```bash
+nix develop
+ssh tau@YOUR_SERVER sudo cat /nix/var/lib/sshd/ssh_host_ed25519_key \
+  | sops encrypt --filename-override secrets/ssh_host_ed25519_key > secrets/ssh_host_ed25519_key
+git add secrets/ssh_host_ed25519_key
+```
+
+在服务器上把 age 私钥复制到新位置：
 
 ```bash
 sudo install -d -m 700 -o tau -g users /home/tau/.ssh
-sudo cp -p /nix/var/lib/sshd/ssh_host_* /home/tau/.ssh/
 sudo install -m 600 /nix/var/lib/sops-nix/key.txt /home/tau/.ssh/age.key
 ```
 
-重建并确认新的 SSH 会话正常、`systemctl status xray` 运行后，再删除 `/nix/var/lib/sshd` 和 `/nix/var/lib/sops-nix`。
+重建并确认新的 SSH 会话正常、`systemctl status xray` 运行后，再删除 `/nix/var/lib/sshd` 和 `/nix/var/lib/sops-nix`。旧的 RSA 主机密钥不再使用；客户端的 `known_hosts` 中若只记录了 RSA 密钥，需要更新一次。
 
 ### 日常更新
 

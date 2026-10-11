@@ -1,3 +1,4 @@
+{ config, ... }:
 {
   # 只允许公钥登录，禁止 root 登录。
   services.openssh = {
@@ -11,18 +12,20 @@
       ClientAliveInterval = 300;
       ClientAliveCountMax = 2;
     };
-    # 主机密钥放在 ~/.ssh，根目录清空后仍保留，客户端不会提示指纹变化。
+    # 主机密钥由下面的 sops 解密得到，重装或重启后指纹不变。
     hostKeys = [
       {
         type = "ed25519";
-        path = "/home/tau/.ssh/ssh_host_ed25519_key";
-      }
-      {
-        type = "rsa";
-        bits = 4096;
-        path = "/home/tau/.ssh/ssh_host_rsa_key";
+        path = config.sops.secrets.ssh_host_ed25519_key.path;
       }
     ];
+  };
+
+  # 主机私钥加密保存在 secrets/ssh_host_ed25519_key，开机时解密到 /run/secrets/。
+  sops.secrets.ssh_host_ed25519_key = {
+    sopsFile = ../secrets/ssh_host_ed25519_key;
+    format = "binary"; # 整个文件就是私钥本身
+    restartUnits = [ "sshd.service" ]; # 密钥变化时重启 SSH（已有会话不受影响）
   };
 
   # 多次登录失败的 IP 会被临时封禁，屡犯者封禁时间递增。
