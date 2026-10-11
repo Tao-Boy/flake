@@ -1,21 +1,11 @@
-{
-  config,
-  inputs,
-  lib,
-  ...
-}:
+{ config, lib, ... }:
 let
   # 本地代理地址，端口与 secrets/xray.json 中的 inbounds 一致。
   http = "http://127.0.0.1:1081";
   socks = "socks5h://127.0.0.1:1080";
 in
 {
-  imports = [ inputs.sops-nix.nixosModules.sops ];
-
-  # 1. 解密：开机时用 ~/.ssh 中的 age 私钥把整份 Xray JSON 解密到 /run/secrets/xray.json。
-  sops.age.keyFile = "/home/tau/.ssh/age.key";
-  sops.age.sshKeyPaths = [ ]; # 只用上面的私钥，不从 SSH 主机密钥派生
-  sops.gnupg.sshKeyPaths = [ ];
+  # 1. 解密：开机时由 sops-nix（modules/sops.nix）把整份 Xray JSON 解密到 /run/secrets/xray.json。
   sops.secrets."xray.json" = {
     sopsFile = ../secrets/xray.json;
     format = "json";

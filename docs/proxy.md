@@ -57,7 +57,7 @@ sops encrypt --filename-override secrets/xray.json /安全路径/config.json > s
 
 ## 已安装系统的开关
 
-age 私钥在目标机器的 `/home/tau/.ssh/age.key` 中，权限为 `0600`，与 SSH 主机密钥放在一起；`/home` 是持久分区，不受 tmpfs 根重启影响。已有机器先通过安全通道复制私钥到该路径，再重建；sops-nix 不自动生成或替换部署密钥。
+age 私钥在目标机器的 `/home/tau/.ssh/age.key` 中，权限为 `0600`；同一把私钥也用于解密 SSH 主机密钥；`/home` 是持久分区，不受 tmpfs 根重启影响。已有机器先通过安全通道复制私钥到该路径，再重建；sops-nix 不自动生成或替换部署密钥。
 
 ```bash
 proxy-off

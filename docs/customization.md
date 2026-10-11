@@ -2,7 +2,7 @@
 
 ## 用户与机器差异
 
-系统只有一个用户，定义在 `user.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。修改用户名时，全局搜索 `tau` 一并替换：`user.nix`、机器中的 `home-manager.users.tau`，以及 `modules/ssh.nix`、`modules/proxy.nix` 中的 `/home/tau/.ssh` 路径；已有家目录和密钥不会自动迁移。
+系统只有一个用户，定义在 `user.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。修改用户名时，全局搜索 `tau` 一并替换：`user.nix`、机器中的 `home-manager.users.tau`，以及 `modules/sops.nix` 中的 `/home/tau/.ssh/age.key` 路径；已有家目录和密钥不会自动迁移。
 
 机器的个别设置直接写在 `machines/vps/default.nix`，例如：
 
@@ -52,7 +52,7 @@ systemd.network.networks."10-uplink" = {
 
 `machines/vps/storage.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-分区布局在 `modules/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时把日志设为只保存在内存中，并同时支持 BIOS / UEFI 启动。SSH 主机密钥和 age 私钥放在持久的 `/home/tau/.ssh`。
+分区布局在 `modules/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时把日志设为只保存在内存中，并同时支持 BIOS / UEFI 启动。SSH 主机密钥加密保存在仓库，解密用的 age 私钥放在持久的 `/home/tau/.ssh`。
 
 `/home` 为 4 GiB，`/nix` 使用剩余磁盘空间；两者是独立 ext4 分区，不共享空闲容量。在机器的 `storage.nix` 中调整家目录分区大小：
 
@@ -75,7 +75,7 @@ nixosConfigurations.edge = inputs.nixpkgs.lib.nixosSystem {
 };
 ```
 
-平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。CI 只构建 vps；需要时在 `flake.nix` 的 `checks` 中仿照 vps 增加一项。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。`modules/ssh.nix` 默认所有机器共用 `secrets/ssh_host_ed25519_key`；新机器想用自己的主机密钥时，按[安装说明](deployment.md#ssh-主机密钥)另外加密一份，并在机器入口写 `sops.secrets.ssh_host_ed25519_key.sopsFile = lib.mkForce ../../secrets/edge_ssh_host_ed25519_key;`（文件开头需改为 `{ lib, ... }:`）。CI 只构建 vps；需要时在 `flake.nix` 的 `checks` 中仿照 vps 增加一项。
 
 当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md)准备 age 私钥副本；选择启用 Xray 的机器需要部署该文件：
 

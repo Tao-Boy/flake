@@ -4,7 +4,8 @@
     ../../user.nix # 唯一的用户与 SSH 公钥
     ../../modules/base.nix # Nix 设置与旧版本清理
     ../../modules/networking.nix # DHCP 网络
-    ../../modules/ssh.nix # SSH 与 fail2ban
+    ../../modules/sops.nix # 解密 secrets/ 中的加密文件
+    ../../modules/ssh.nix # SSH、加密的主机密钥与 fail2ban
     ../../modules/hardening.nix # 防火墙与内核网络参数
     ../../modules/maintenance.nix # 时间同步、zram 等
     ../../modules/proxy.nix # Xray 代理与 proxy-on / proxy-off
