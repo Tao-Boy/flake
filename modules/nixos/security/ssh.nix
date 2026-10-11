@@ -21,6 +21,5 @@
       enable = true;
       maxtime = "24h";
     };
-    jails.sshd.settings.findtime = "10m";
   };
 }
