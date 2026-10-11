@@ -57,7 +57,7 @@ sops encrypt --filename-override secrets/xray.json /安全路径/config.json > s
 
 ## 已安装系统的开关
 
-age 私钥在目标机器的 `/home/tau/.ssh/age.key` 中，权限为 `0600`；同一把私钥也用于解密 SSH 主机密钥；`/home` 是持久分区，不受 tmpfs 根重启影响。已有机器先通过安全通道复制私钥到该路径，再重建；sops-nix 不自动生成或替换部署密钥。
+age 私钥由你自己保存，服务器上的副本在 `/home/tau/.config/sops/age/keys.txt`（sops 的默认位置），权限为 `0600`；同一把私钥也用于解密 SSH 主机密钥；`/home` 是持久分区，不受 tmpfs 根重启影响。已有机器先通过安全通道复制私钥到该路径，再重建；sops-nix 不自动生成或替换部署密钥。
 
 ```bash
 proxy-off
@@ -126,10 +126,10 @@ LiveCD 临时代理解密使用的私钥，还需提供给安装后的系统。�
 
 ```bash
 umask 077
-mkdir -p work/extra-files/home/tau/.ssh
-install -m 600 /安全路径/keys.txt work/extra-files/home/tau/.ssh/age.key
+mkdir -p work/extra-files/home/tau/.config/sops/age
+install -m 600 /安全路径/keys.txt work/extra-files/home/tau/.config/sops/age/keys.txt
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local \
+  --extra-files "$PWD/work/extra-files" --chown /home/tau 1000:100 --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
 ```
 
@@ -154,12 +154,13 @@ nix build .#nixosConfigurations.vps.config.system.build.toplevel --out-link work
 nix build .#nixosConfigurations.vps.config.system.build.diskoScript --out-link work/disko
 # 下条命令会清空 storage.nix 指定的整盘，并挂载到 /mnt。
 sudo "$(readlink -f work/disko)"
-sudo install -d -m 700 /mnt/home/tau/.ssh
-sudo install -m 600 /安全路径/keys.txt /mnt/home/tau/.ssh/age.key
+sudo mkdir -p /mnt/home/tau/.config/sops/age
+sudo install -m 600 /安全路径/keys.txt /mnt/home/tau/.config/sops/age/keys.txt
+sudo chown -R 1000:100 /mnt/home/tau   # 归用户 tau 所有
 sudo nixos-install --system "$(readlink -f work/system)" --no-root-passwd
 ```
 
-完整系统已在 LiveCD 的 Nix store 中构建，`nixos-install` 复制已有闭包并安装启动项，代理一直留在当前 LiveCD 中运行。完成后核对 `/mnt/home/tau/.ssh/age.key` 权限、保存硬件文件和密文、清理临时密钥副本，再由用户重启进入已安装系统。使用原生安装流程不会自动执行重启，也不会额外生成硬件或网络配置。
+完整系统已在 LiveCD 的 Nix store 中构建，`nixos-install` 复制已有闭包并安装启动项，代理一直留在当前 LiveCD 中运行。完成后核对 `/mnt/home/tau/.config/sops/age/keys.txt` 权限、保存硬件文件和密文、清理临时密钥副本，再由用户重启进入已安装系统。使用原生安装流程不会自动执行重启，也不会额外生成硬件或网络配置。
 
 ## 从旧版本迁移
 

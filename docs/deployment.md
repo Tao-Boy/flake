@@ -10,11 +10,11 @@ VPS 默认启用 Xray。先按[代理说明](proxy.md)用 `sops` 创建完整的
 
 ```bash
 umask 077
-mkdir -p work/extra-files/home/tau/.ssh
-install -m 600 ~/.config/sops/age/keys.txt work/extra-files/home/tau/.ssh/age.key
+mkdir -p work/extra-files/home/tau/.config/sops/age
+install -m 600 ~/.config/sops/age/keys.txt work/extra-files/home/tau/.config/sops/age/keys.txt
 ```
 
-安装后私钥位于目标机器的 `/home/tau/.ssh/age.key`；`~/.ssh` 的归属在开机时自动改为 `tau`。使用已有私钥时替换源路径。私钥留在仓库外，`work/` 中的副本不会被 Git 跟踪。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
+age 私钥由你自己保存，不进入仓库；丢失后无法解密 `secrets/`，请另行备份。安装后服务器上的副本位于 `/home/tau/.config/sops/age/keys.txt`，与本机 sops 的默认位置相同；安装命令中的 `--chown /home/tau 1000:100` 让复制进去的文件归 `tau`（UID 1000、`users` 组 100）所有，因此在服务器上也能直接运行 `sops`。使用其他位置的私钥时替换源路径。`work/` 中的副本不会被 Git 跟踪，安装后删除。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
 
 ### SSH 主机密钥
 
@@ -39,20 +39,20 @@ git add .
 nix flake check --no-build --no-write-lock-file
 ```
 
-**安装会清空目标磁盘。** 先备份 `/home`（其中 `~/.ssh/age.key` 是解密私钥）和应用数据，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
+**安装会清空目标磁盘。** 先备份 `/home` 和应用数据，并确认本机仍保存着 age 私钥，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
 
 使用已经准备好的硬件配置：
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local
+  --extra-files "$PWD/work/extra-files" --chown /home/tau 1000:100 --build-on local
 ```
 
 选择生成硬件配置时，用以下命令替代上面的命令：
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local \
+  --extra-files "$PWD/work/extra-files" --chown /home/tau 1000:100 --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
 ```
 
@@ -67,7 +67,7 @@ git add machines/vps/hardware-configuration.nix
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local \
+  --extra-files "$PWD/work/extra-files" --chown /home/tau 1000:100 --build-on local \
   -i ~/.ssh/id_ed25519 --ssh-port 22
 nix run .#install -- --help
 ```
@@ -94,8 +94,10 @@ git add secrets/ssh_host_ed25519_key
 在服务器上把 age 私钥复制到新位置：
 
 ```bash
-sudo install -d -m 700 -o tau -g users /home/tau/.ssh
-sudo install -m 600 /nix/var/lib/sops-nix/key.txt /home/tau/.ssh/age.key
+# 以 tau 身份执行，文件自然归 tau 所有。
+mkdir -p ~/.config/sops/age
+sudo cat /nix/var/lib/sops-nix/key.txt > ~/.config/sops/age/keys.txt
+chmod 600 ~/.config/sops/age/keys.txt
 ```
 
 重建并确认新的 SSH 会话正常、`systemctl status xray` 运行后，再删除 `/nix/var/lib/sshd` 和 `/nix/var/lib/sops-nix`。旧的 RSA 主机密钥不再使用；客户端的 `known_hosts` 中若只记录了 RSA 密钥，需要更新一次。
