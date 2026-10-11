@@ -1,18 +1,22 @@
 { users, ... }:
 {
   imports = [
+    # 系统基础与安全。
     ../../modules/nixos/base.nix
     ../../modules/nixos/networking.nix
     ../../modules/nixos/security/ssh.nix
     ../../modules/nixos/security/hardening.nix
+    # 本机需要的服务和用户环境。
     ../../modules/nixos/services/maintenance.nix
     ../../modules/nixos/services/xray.nix
     ../../modules/home-manager.nix
+    # 本机硬件与磁盘；硬件文件由用户维护。
     ./hardware-configuration.nix
     ./storage.nix
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
+  networking.hostName = "vps";
   home-manager.users.${users.username} = ./home.nix;
   sops.defaultSopsFile = ../../secrets/xray.yaml;
   services.qemuGuest.enable = true;
