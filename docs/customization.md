@@ -1,20 +1,21 @@
 # 定制与新增机器
 
-## 身份与机器差异
+## 用户与机器差异
 
-管理员用户名、公钥统一在 `users.nix`，即 `local.admin.name` 与 `local.admin.sshKeys` 两个选项。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。系统账号、Nix 信任用户、SSH AllowUsers 与 Home Manager 使用同一身份。UID 为 1000；修改用户名不会自动迁移家目录或修改旧文件归属。
+系统只有一个用户，定义在 `user.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。修改用户名时，把 `user.nix` 中的 `users.users.tau` 和机器中的 `home-manager.users.tau` 一起改掉；已有家目录不会自动迁移。
 
-机器覆盖共享默认值时直接使用 NixOS 选项：
+机器的个别设置直接写在 `machines/vps/default.nix`，例如：
 
 ```nix
 # machines/vps/default.nix
 services.openssh.ports = [ 2222 ];
 time.timeZone = "Asia/Shanghai";
 zramSwap.memoryPercent = 25;
-nix.settings.max-jobs = 2;
 ```
 
-共享系统配置在 `modules/nixos/`，全部用户软件配置在 `home/`。机器的系统差异和软件选择均放在 `machines/<name>/`，系统功能在 `default.nix` 的 imports 中逐项选择，用户模块在 `home.nix` 中选择。网络、SSH、安全和维护服务都可独立取舍；Home Manager 接入通过 `modules/nixos/home-manager.nix` 启用。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
+模块中已经设置过的值（例如 `nix.settings.max-jobs`）不能在机器中再写一遍，直接修改模块文件即可。
+
+系统模块在 `modules/`，用户软件在 `home/`。系统功能在机器 `default.nix` 的 imports 中逐行选择，用户软件在 `home.nix` 中选择。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
 
 ## 硬件配置与网络
 
@@ -51,9 +52,9 @@ systemd.network.networks."10-uplink" = {
 
 `machines/vps/storage.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-共享布局在 `modules/nixos/storage/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时管理易失日志和持久 SSH 主机密钥；机器选择该布局后才应用这些策略。BIOS / UEFI 兼容设置保留。
+分区布局在 `modules/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时设置内存中的日志和持久的 SSH 主机密钥，并同时支持 BIOS / UEFI 启动。
 
-`/home` 默认 4 GiB，`/nix` 使用剩余磁盘空间；两者是独立 ext4 分区，不共享空闲容量。在机器的 `storage.nix` 中调整家目录分区大小：
+`/home` 为 4 GiB，`/nix` 使用剩余磁盘空间；两者是独立 ext4 分区，不共享空闲容量。在机器的 `storage.nix` 中调整家目录分区大小：
 
 ```nix
 disko.devices.disk.system.content.partitions.home.size = "8G";
@@ -65,24 +66,16 @@ disko.devices.disk.system.content.partitions.home.size = "8G";
 
 ## 新增机器
 
-复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports，并把 `networking.hostName` 改为 `"edge"`。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `flake.nix` 中增加机器入口和同名检查：
+复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports，并把 `networking.hostName` 改为 `"edge"`。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `flake.nix` 中复制 vps 的入口：
 
 ```nix
-nixosConfigurations = {
-  vps = mkMachine ./machines/vps;
-  edge = mkMachine ./machines/edge;
-};
-
-checks.${system} = {
-  vps = checkMachine "vps";
-  edge = checkMachine "edge";
-  # ...
+nixosConfigurations.edge = inputs.nixpkgs.lib.nixosSystem {
+  specialArgs = { inherit inputs; };
+  modules = [ ./machines/edge ];
 };
 ```
 
-`mkMachine` 为每台机器加入共享的 `users.nix`；`checkMachine` 构建系统闭包，机器选用 disko 时一并构建分区脚本。在 `.github/workflows/ci.yml` 中复制 vps 的构建步骤，改为 `.#checks.x86_64-linux.edge`。
-
-平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.${config.local.admin.name} = ./home.nix;` 指定。不需要 Home Manager 的机器可移除该用户入口与 `modules/nixos/home-manager.nix` 导入。不需要代理的机器不导入 `modules/nixos/services/proxy.nix`，并移除 `local.proxy.configFile`。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。CI 只构建 vps；需要时在 `flake.nix` 的 `checks` 中仿照 vps 增加一项。
 
 当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md)准备 age 私钥副本；选择启用 Xray 的机器需要部署该文件：
 

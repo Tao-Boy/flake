@@ -21,92 +21,41 @@
     };
   };
 
-  # outputs：可构建的系统、检查，以及 nix run / nix develop 使用的工具。
+  # outputs：可构建的系统，以及 nix run / nix develop 使用的工具。
   outputs =
     inputs:
     let
-      inherit (inputs.nixpkgs) lib;
-      # 这里的平台用于工具和检查；机器的平台在机器配置中设置。
-      system = "x86_64-linux";
+      system = "x86_64-linux"; # 本机工具的平台
       pkgs = inputs.nixpkgs.legacyPackages.${system};
-
-      # 每台机器由共享的管理员身份和自己的目录组成。
-      mkMachine =
-        path:
-        lib.nixosSystem {
-          specialArgs = { inherit inputs; };
-          modules = [
-            ./users.nix
-            path
-          ];
-        };
-
-      # 构建机器的系统闭包与 disko 脚本；未填写的模板由 tests/template.nix 补齐。
-      checkMachine =
-        name:
-        let
-          inherit
-            (inputs.self.nixosConfigurations.${name}.extendModules { modules = [ ./tests/template.nix ]; })
-            config
-            ;
-        in
-        pkgs.linkFarm "machine-${name}" (
-          {
-            system = config.system.build.toplevel;
-          }
-          // lib.optionalAttrs (config.system.build ? diskoScript) {
-            disko = config.system.build.diskoScript;
-          }
-        );
     in
     {
-      # .#vps 对应这台机器；新增机器时在这里加一行，并在 checks 中加入同名检查。
-      nixosConfigurations = {
-        vps = mkMachine ./machines/vps;
+      # .#vps 对应这台机器；新增机器时复制这一段并修改名称和路径。
+      nixosConfigurations.vps = inputs.nixpkgs.lib.nixosSystem {
+        specialArgs = { inherit inputs; }; # 让模块可以使用 inputs.disko 等外部模块
+        modules = [ ./machines/vps ];
       };
 
-      # nix flake check / CI 运行的检查。
-      checks.${system} = {
-        vps = checkMachine "vps";
-        proxy = pkgs.testers.runNixOSTest (import ./tests/proxy.nix { inherit inputs; });
-        lint =
-          pkgs.runCommand "lint"
-            {
-              nativeBuildInputs = [
-                pkgs.nixfmt
-                pkgs.statix
-                pkgs.deadnix
-              ];
-            }
-            ''
-              cd ${inputs.self}
-              nixfmt --check $(find . -name '*.nix')
-              statix check .
-              deadnix --fail .
-              touch $out
-            '';
-      };
+      # CI 构建 vps 系统时，用 .github/ci.nix 补上占位公钥和示例配置。
+      checks.${system}.vps =
+        (inputs.self.nixosConfigurations.vps.extendModules { modules = [ ./.github/ci.nix ]; })
+        .config.system.build.toplevel;
 
       packages.${system} = {
-        install = pkgs.nixos-anywhere; # nix run .#install
-        # 保留直接运行 nix run . 和 .#nixos-anywhere 的入口。
-        default = pkgs.nixos-anywhere;
-        # LiveCD 临时代理使用的锁定版本工具，可预先 nix copy 到目标。
-        inherit (pkgs) nixos-anywhere sops xray;
+        install = pkgs.nixos-anywhere; # nix run .#install：远程安装
+        # LiveCD 临时代理用到的工具，版本与系统一致。
+        inherit (pkgs) sops xray;
       };
 
       formatter.${system} = pkgs.nixfmt; # nix fmt
+
+      # nix develop：进入包含安装、加密和格式化工具的终端环境。
       devShells.${system}.default = pkgs.mkShell {
-        # nix develop：进入包含安装、加密和检查工具的终端环境。
         packages = [
           pkgs.git
           pkgs.openssh
-          pkgs.nix
           pkgs.nixos-anywhere
           pkgs.nixos-rebuild
           pkgs.nixfmt
-          pkgs.statix
-          pkgs.deadnix
           pkgs.sops
           pkgs.age
           pkgs.xray

@@ -1,4 +1,4 @@
-{ inputs, lib, ... }:
+{ inputs, ... }:
 {
   imports = [ inputs.disko.nixosModules.disko ];
 
@@ -31,8 +31,8 @@
             mountOptions = [ "umask=0077" ];
           };
         };
+        # /home 的大小在机器的 storage.nix 中设置。
         home = {
-          size = lib.mkDefault "4G";
           content = {
             type = "filesystem";
             format = "ext4";
@@ -56,7 +56,7 @@
   # /nix 已由 NixOS 纳入启动挂载；这里只补充 /home。
   fileSystems."/home".neededForBoot = true;
 
-  # 易失根的状态策略跟随存储布局，避免影响普通持久根的机器。
+  # 根目录会清空，因此日志只保存在内存中，SSH 主机密钥放在持久的 /nix 分区。
   services.journald.extraConfig = ''
     Storage=volatile
     RuntimeMaxUse=64M
@@ -73,11 +73,13 @@
       path = "/nix/var/lib/sshd/ssh_host_rsa_key";
     }
   ];
-  boot.kernelParams = lib.mkAfter [
+  # 同时输出到显示器和串口控制台，便于在服务商的网页控制台中查看。
+  boot.kernelParams = [
     "console=tty0"
     "console=ttyS0,115200n8"
   ];
 
+  # GRUB 同时支持 BIOS 与 UEFI 启动，保留最近 10 个系统版本。
   boot.loader = {
     efi.canTouchEfiVariables = false;
     grub = {

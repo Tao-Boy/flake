@@ -1,18 +1,16 @@
-{ config, ... }:
 {
+  # 这台机器使用的配置；不需要的功能删掉对应一行即可。
   imports = [
-    # 系统基础与安全。
-    ../../modules/nixos/base.nix
-    ../../modules/nixos/networking.nix
-    ../../modules/nixos/security/ssh.nix
-    ../../modules/nixos/security/hardening.nix
-    # 本机需要的服务和用户环境。
-    ../../modules/nixos/services/maintenance.nix
-    ../../modules/nixos/services/proxy.nix
-    ../../modules/nixos/home-manager.nix
-    # 本机硬件与磁盘；硬件文件由用户维护。
-    ./hardware-configuration.nix
-    ./storage.nix
+    ../../user.nix # 唯一的用户与 SSH 公钥
+    ../../modules/base.nix # Nix 设置与旧版本清理
+    ../../modules/networking.nix # DHCP 网络
+    ../../modules/ssh.nix # SSH 与 fail2ban
+    ../../modules/hardening.nix # 防火墙与内核网络参数
+    ../../modules/maintenance.nix # 时间同步、zram 等
+    ../../modules/proxy.nix # Xray 代理与 proxy-on / proxy-off
+    ../../modules/home-manager.nix # 用户软件
+    ./hardware-configuration.nix # 硬件
+    ./storage.nix # 磁盘分区
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
@@ -20,9 +18,9 @@
   time.timeZone = "UTC";
   services.qemuGuest.enable = true;
 
-  home-manager.users.${config.local.admin.name} = ./home.nix;
-  local.proxy.configFile = ../../secrets/xray.json;
+  # 用户 tau 的软件在 home.nix 中选择。
+  home-manager.users.tau = ./home.nix;
 
-  # 保留首次安装时的兼容版本，不随输入更新改变。
+  # 首次安装时的系统版本，升级软件时保持不变。
   system.stateVersion = "26.05";
 }

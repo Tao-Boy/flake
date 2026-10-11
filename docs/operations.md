@@ -2,25 +2,16 @@
 
 ## 修改后验证
 
-先填写真实 SSH 公钥，新增文件执行 `git add`。本地开发环境包含 Nix、nixfmt、statix、deadnix、sops、Xray 与安装器。
+先填写真实 SSH 公钥，新增文件执行 `git add`。开发环境包含 nixfmt、sops、Xray 与安装器。
 
 ```bash
 nix develop
 nix fmt
-nix flake check --no-write-lock-file
+nix flake check --no-build --no-write-lock-file   # 只求值，速度快
+nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
 ```
 
-`nix flake check` 求值全部机器并运行 `flake.nix` 中的检查。也可以单独运行，与 CI 的步骤一致：
-
-| 检查 | 命令 | 内容 |
-| --- | --- | --- |
-| `lint` | `nix build .#checks.x86_64-linux.lint` | nixfmt 格式、statix、deadnix |
-| `vps` | `nix build .#checks.x86_64-linux.vps` | 系统闭包（含 Home Manager 与 `proxy-off` 特化）和 disko 脚本 |
-| `proxy` | `nix build .#checks.x86_64-linux.proxy` | NixOS 虚拟机中验证 Xray 监听与 `proxy-on` / `proxy-off` |
-
-构建 disko 脚本不会执行格式化。虚拟机测试需要 KVM；GitHub 运行器由 Nix 安装步骤自动启用。CI 不运行安装和重启测试，不连接 VPS、不写回仓库。
-
-机器检查通过 `tests/template.nix` 构建：追加一把占位公钥，并在仓库还没有 `secrets/xray.json` 时改用明文示例，因此未填写的模板也能通过 CI。产物不用于部署；实际部署仍须填写真实公钥和密文，否则 `nixosConfigurations` 的断言会阻止构建。
+最后一条完整构建系统，包含 Home Manager 和 `proxy-off` 配置。CI 做两件事：检查 Nix 文件格式，构建 `.#checks.x86_64-linux.vps`。后者通过 `.github/ci.nix` 补上占位公钥并改用明文示例，因此仓库未填写时 CI 也能通过；产物不用于部署。CI 不连接 VPS、不写回仓库。
 
 ## 服务与网络
 
@@ -41,7 +32,7 @@ sudo fail2ban-client status sshd
 systemctl status home-manager-tau.service
 ```
 
-管理员更名后替换 Home Manager 服务名。DHCP / RA 应提供地址、路由、DNS；服务商只支持静态配置时应主动在机器入口声明。软件防火墙与服务商防火墙须同时允许 SSH 端口。
+修改用户名后替换 Home Manager 服务名。DHCP / RA 应提供地址、路由、DNS；服务商只支持静态配置时应主动在机器入口声明。软件防火墙与服务商防火墙须同时允许 SSH 端口。
 
 ## 更新与回滚
 

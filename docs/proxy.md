@@ -10,7 +10,7 @@ Xray 直接读取原生 JSON 配置，包含日志、入站、出站、路由、
 | 终端与 Nix 守护进程的代理变量 | nixpkgs 的 `networking.proxy` |
 | 开关 | NixOS 特化 `specialisation.proxy-off` 与 `switch-to-configuration` |
 
-以上都在 `modules/nixos/services/proxy.nix`，机器只需导入它并设置 `local.proxy.configFile`。加密文件可以进入 Git 与 Nix store，明文配置和 age 私钥保存在仓库外。
+以上都在 `modules/proxy.nix`，按 1～5 的注释顺序阅读即可；机器在 imports 中加入这一行就会启用。加密文件可以进入 Git 与 Nix store，明文配置和 age 私钥保存在仓库外。
 
 ## 首次准备
 
@@ -45,7 +45,7 @@ git add .sops.yaml secrets/xray.json
 | `outbounds[0].streamSettings.realitySettings.password` | 服务商提供的 Reality 公钥，旧称 `publicKey` |
 | `outbounds[0].streamSettings.realitySettings.shortId` | 十六进制 short ID；节点允许时可为空字符串 |
 
-其他协议或路由规则直接在 JSON 中修改。示例 HTTP 代理监听 `127.0.0.1:1081`，SOCKS5 监听 `127.0.0.1:1080`；修改端口时，在机器入口同步设置 `local.proxy.httpPort` / `local.proxy.socksPort`。加密要求标准 JSON，不加入注释或尾随逗号。
+其他协议或路由规则直接在 JSON 中修改。示例 HTTP 代理监听 `127.0.0.1:1081`，SOCKS5 监听 `127.0.0.1:1080`；修改端口时，同步修改 `modules/proxy.nix` 开头的 `http` / `socks` 地址。加密要求标准 JSON，不加入注释或尾随逗号。
 
 已有完整明文配置时，直接加密到仓库，明文源文件放在仓库外：
 
@@ -54,23 +54,6 @@ sops encrypt --filename-override secrets/xray.json /安全路径/config.json > s
 ```
 
 提交密文并重建后，sops-nix 会在内容变化时重启 Xray；语法通过后仍需验证实际节点连通性。age 私钥应备份并保持受限权限。更换或增加公钥时修改 `.sops.yaml`，再执行 `sops updatekeys secrets/xray.json`。
-
-## 机器配置
-
-```nix
-# machines/vps/default.nix
-imports = [ ../../modules/nixos/services/proxy.nix ];
-local.proxy.configFile = ../../secrets/xray.json;
-```
-
-| 选项 | 默认值 | 含义 |
-| --- | --- | --- |
-| `local.proxy.configFile` | 无 | SOPS 加密的完整 Xray JSON |
-| `local.proxy.httpPort` | `1081` | 与 JSON 中 HTTP 入站一致 |
-| `local.proxy.socksPort` | `1080` | 与 JSON 中 SOCKS5 入站一致 |
-| `local.proxy.enable` | `true` | 由 `proxy-off` 特化设为 `false`，机器通常不需要修改 |
-
-密文不存在或未 `git add` 时，求值会给出断言提示。不需要代理的机器不导入该模块，也不设置 `local.proxy.*`。
 
 ## 已安装系统的开关
 
@@ -95,7 +78,7 @@ sudo /nix/var/nix/profiles/system/bin/switch-to-configuration test
 
 `test` 不改变启动项，重启后回到默认开启。GRUB 菜单也会列出 `proxy-off` 配置，可以直接以无代理状态启动。开关以系统 profile（最近一次 `switch` 的配置）为准：用 `nixos-rebuild test` 临时激活的配置，在 `proxy-on` 后会回到 profile 中的版本。
 
-需要长期取消代理时，从机器 imports 中移除该模块和 `local.proxy.configFile`。终端 HTTP/SOCKS 变量适用于支持代理变量的工具；SSH 等程序需按自身接口配置，系统未使用透明代理。
+需要长期取消代理时，从机器 imports 中删掉 `../../modules/proxy.nix`。终端 HTTP/SOCKS 变量适用于支持代理变量的工具；SSH 等程序需按自身接口配置，系统未使用透明代理。
 
 ## NixOS LiveCD 中临时启用
 
@@ -189,12 +172,12 @@ sudo nixos-install --system "$(readlink -f work/system)" --no-root-passwd
 | `proxy-setup check` | `sops exec-file --no-fifo --filename config.json ... 'xray run -test -config {}'` |
 | `proxy-setup live` 与 LiveCD 中的 `proxy on` / `off` | 上文 LiveCD 中的 `systemd-run` 与 `systemctl set-environment` |
 | 已安装系统的 `sudo proxy on` / `off` | `proxy-on` / `proxy-off`，或直接运行 `switch-to-configuration test` |
-| `proxy/environment.nix` 中的端口 | `local.proxy.httpPort` / `local.proxy.socksPort` |
-| `sops.defaultSopsFile = ../../secrets/xray.json;` | `local.proxy.configFile = ../../secrets/xray.json;` |
+| `proxy/environment.nix` 中的端口 | `modules/proxy.nix` 开头的 `http` / `socks` |
+| 机器中的 `sops.defaultSopsFile` | 不再需要；密文路径写在 `modules/proxy.nix` |
 | `home/programs/proxy.nix` | 不再需要；别名由系统模块提供 |
 
 更早的 `secrets/xray.yaml` 只包含五个节点字段，不能直接改后缀使用：按“首次准备”从示例创建完整 JSON，填入原节点信息，Reality 公钥填入 `password`。
 
 终端与 Nix 守护进程的代理变量现由 `networking.proxy` 提供，只设置小写的 `http_proxy`、`https_proxy`、`all_proxy`、`no_proxy`；只读取大写变量的工具需另行配置。
 
-CI 在 NixOS 虚拟机中以明文示例运行该模块，验证 Xray 监听、Nix 守护进程与登录环境的代理变量，以及 `proxy-off` / `proxy-on` 对系统和当前 shell 的切换；不持有实际节点私钥，也不验证示例节点的外网连通性。
+CI 用明文示例构建包含该模块的系统，不持有实际节点私钥，也不验证节点连通性。
