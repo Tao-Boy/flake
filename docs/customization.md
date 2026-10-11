@@ -2,7 +2,7 @@
 
 ## 用户与机器差异
 
-系统只有一个用户，定义在 `user.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。修改用户名时，把 `user.nix` 中的 `users.users.tau` 和机器中的 `home-manager.users.tau` 一起改掉；已有家目录不会自动迁移。
+系统只有一个用户，定义在 `user.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。完整公钥取自 `.pub` 文件；私钥、密码和令牌不进入仓库。修改用户名时，全局搜索 `tau` 一并替换：`user.nix`、机器中的 `home-manager.users.tau`，以及 `modules/ssh.nix`、`modules/proxy.nix` 中的 `/home/tau/.ssh` 路径；已有家目录和密钥不会自动迁移。
 
 机器的个别设置直接写在 `machines/vps/default.nix`，例如：
 
@@ -52,7 +52,7 @@ systemd.network.networks."10-uplink" = {
 
 `machines/vps/storage.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-分区布局在 `modules/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时设置内存中的日志和持久的 SSH 主机密钥，并同时支持 BIOS / UEFI 启动。
+分区布局在 `modules/ephemeral-root.nix`：GPT、BIOS boot、ESP、ext4 `/nix` 和 `/home`，加 tmpfs 根。它同时把日志设为只保存在内存中，并同时支持 BIOS / UEFI 启动。SSH 主机密钥和 age 私钥放在持久的 `/home/tau/.ssh`。
 
 `/home` 为 4 GiB，`/nix` 使用剩余磁盘空间；两者是独立 ext4 分区，不共享空闲容量。在机器的 `storage.nix` 中调整家目录分区大小：
 

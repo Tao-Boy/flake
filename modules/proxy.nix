@@ -12,8 +12,8 @@ in
 {
   imports = [ inputs.sops-nix.nixosModules.sops ];
 
-  # 1. 解密：开机时用 age 私钥把整份 Xray JSON 解密到 /run/secrets/xray.json。
-  sops.age.keyFile = "/nix/var/lib/sops-nix/key.txt";
+  # 1. 解密：开机时用 ~/.ssh 中的 age 私钥把整份 Xray JSON 解密到 /run/secrets/xray.json。
+  sops.age.keyFile = "/home/tau/.ssh/age.key";
   sops.age.sshKeyPaths = [ ]; # 只用上面的私钥，不从 SSH 主机密钥派生
   sops.gnupg.sshKeyPaths = [ ];
   sops.secrets."xray.json" = {

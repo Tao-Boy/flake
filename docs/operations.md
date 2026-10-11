@@ -59,4 +59,4 @@ sudo systemctl status nix-gc.timer fstrim.timer
 
 根 tmpfs 上限为内存的 50%，按需占用，并与应用、zram 共享物理内存；大型本机构建可将 Nix `build-dir` 指向 `/nix` 下专用目录。`/nix` 与 `/home` 使用独立 ext4 分区，分别检查可用空间并安排备份；空间不足时不能直接借用另一分区的空闲容量。
 
-`/var` 默认易失，数据库、fail2ban 历史、rootful 容器和 ACME 证书需单独规划持久化。SSH 主机私钥持久保存在 `/nix/var/lib/sshd`；备份须保留权限并按秘密处理。安装命令擦盘，日常更新只运行 `nixos-rebuild`。
+`/var` 默认易失，数据库、fail2ban 历史、rootful 容器和 ACME 证书需单独规划持久化。SSH 主机私钥和 age 私钥持久保存在 `/home/tau/.ssh`；备份须保留权限并按秘密处理。安装命令擦盘，日常更新只运行 `nixos-rebuild`。
