@@ -33,7 +33,7 @@ in
   };
   systemd.services.nix-daemon = {
     after = [ "xray.service" ];
-    environment = proxy.environment;
+    inherit (proxy) environment;
   };
   environment.systemPackages = [ (pkgs.callPackage ../../../proxy { }) ];
 }
