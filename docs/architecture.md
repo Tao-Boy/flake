@@ -13,8 +13,8 @@
 | `modules/nixos/` | 可供机器选择的系统配置 |
 | `modules/home-manager.nix`、`disko.nix`、`sops.nix` | 接入对应外部模块 |
 | `home/` | 全部用户软件与 dotfiles，公共兼容版本在 `default.nix` |
-| `proxy/settings.nix`、`default.nix`、`setup.nix` | 共用代理设置、开关工具、密文与 LiveCD 初始化工具 |
-| `secrets/xray.yaml` | 用户初始化后提交的加密凭据 |
+| `proxy/environment.nix`、`default.nix`、`setup.nix` | 本地代理地址、开关工具、密文与 LiveCD 初始化工具 |
+| `secrets/xray.json` | 用户维护的整份加密 Xray JSON |
 
 `flake.nix` 只负责连接入口。主机名、平台、时区和功能取舍在机器目录中声明。共用模块定义功能，由机器显式导入。
 
@@ -40,7 +40,7 @@
 
 机器需要用户环境时，导入 `modules/home-manager.nix`，并将 `home-manager.users.${users.username}` 指向自己的 `home.nix`。接入文件加载 `home/default.nix` 的公共兼容版本并提供软件源；程序仍由机器选择。
 
-机器的 `storage.nix` 选择共享存储布局，布局再导入 `modules/disko.nix`。Xray 服务模块导入 `modules/sops.nix`，从机器指定的密文解密节点信息。上游模块分别通过这些本地文件接入。
+机器的 `storage.nix` 选择共享存储布局，布局再导入 `modules/disko.nix`。Xray 服务模块导入 `modules/sops.nix`，将机器指定的加密 JSON 完整解密，由 systemd 直接启动 Xray 读取；Xray 选项由 JSON 维护。上游模块分别通过这些本地文件接入。
 
 硬件文件始终从固定路径导入。用户保留适用模板、提供已有文件，或显式调用 nixos-anywhere 生成；求值和重建使用已保存的文件。
 
