@@ -1,5 +1,7 @@
 { lib, ... }:
 {
+  imports = [ ../../disko.nix ];
+
   # 根目录在内存中，每次重启清空；50% 是上限，不会提前占用内存。
   disko.devices.nodev."/" = {
     fsType = "tmpfs";
@@ -51,8 +53,7 @@
     };
   };
 
-  # 只补充启动顺序；设备、类型和挂载选项仍由 disko 生成。
-  fileSystems."/nix".neededForBoot = true;
+  # /nix 已由 NixOS 纳入启动挂载；这里只补充 /home。
   fileSystems."/home".neededForBoot = true;
 
   # 易失根的状态策略跟随存储布局，避免影响普通持久根的机器。

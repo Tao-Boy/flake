@@ -68,14 +68,10 @@ disko.devices.disk.system.content.partitions.home.size = "8G";
 复制 `machines/vps/` 为 `machines/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports。为新机器准备独立硬件文件，调整存储和系统差异；不要沿用其他实际机器生成的硬件配置。在 `machines/default.nix` 增加：
 
 ```nix
-edge = {
-  system = "x86_64-linux";
-  module = ./edge;
-  home = ./edge/home.nix;
-};
+edge = ./edge;
 ```
 
-不需要 Home Manager 的机器可移除 `modules/home-manager.nix` 导入并省略清单中的 `home` 项。机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统；仅为选用 disko 的机器构建其脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.${users.username} = ./home.nix;` 指定。不需要 Home Manager 的机器可移除该用户入口与 `modules/home-manager.nix` 导入。机器清单自动生成 `nixosConfigurations.edge`，CI 直接构建清单中的系统；仅为选用 disko 的机器构建其脚本。当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。
 
 ```bash
 git add machines home

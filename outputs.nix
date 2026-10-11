@@ -1,8 +1,8 @@
 inputs:
 let
   inherit (inputs.nixpkgs) lib;
-  users = import ../users.nix;
-  machines = import ../machines;
+  users = import ./users.nix;
+  machines = import ./machines;
   system = "x86_64-linux";
   pkgs = inputs.nixpkgs.legacyPackages.${system};
 in
@@ -10,11 +10,10 @@ in
   nixosConfigurations = lib.mapAttrs (
     name: machine:
     lib.nixosSystem {
-      specialArgs = { inherit inputs users machine; };
+      specialArgs = { inherit inputs users; };
       modules = [
-        machine.module
+        machine
         {
-          nixpkgs.hostPlatform = lib.mkDefault machine.system;
           networking.hostName = lib.mkDefault name;
         }
       ];

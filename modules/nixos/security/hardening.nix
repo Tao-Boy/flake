@@ -1,7 +1,6 @@
 { lib, ... }:
 {
   networking.nftables.enable = true;
-  networking.firewall.enable = true;
   systemd.coredump.settings.Coredump = {
     Storage = "none";
     ProcessSizeMax = 0;
