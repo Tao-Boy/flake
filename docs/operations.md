@@ -25,6 +25,8 @@ CI 只在工作区为空公钥模板生成临时公钥，不连接 VPS、不写�
 systemctl --failed
 journalctl -b -p warning
 systemctl status sshd fail2ban chronyd qemu-guest-agent
+systemctl status xray sops-install-secrets
+proxy status
 networkctl status
 resolvectl status
 ip -br address

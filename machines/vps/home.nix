@@ -8,5 +8,6 @@
     ../../home/programs/git.nix
     ../../home/programs/neovim.nix
     ../../home/programs/tmux.nix
+    ../../home/programs/proxy.nix
   ];
 }

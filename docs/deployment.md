@@ -6,6 +6,16 @@
 
 填写 `users.nix` 的真实完整公钥，核对 `machines/vps/storage.nix` 的整盘路径，仅在服务商要求时声明静态网络。root 与管理员密码锁定，空公钥会触发 NixOS 登录保护断言。
 
+VPS 默认启用 Xray。先执行 `nix run .#proxy -- init` 填写实际节点，提交 `secrets/xray.yaml`，并准备安装所需的 age 私钥副本：
+
+```bash
+umask 077
+mkdir -p work/extra-files/nix/var/lib/sops-nix
+install -m 600 ~/.config/sops/age/keys.txt work/extra-files/nix/var/lib/sops-nix/key.txt
+```
+
+使用已有私钥时替换源路径。私钥留在仓库外，`work/` 中的副本不会被 Git 跟踪。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
+
 硬件配置由用户控制。`machines/vps/hardware-configuration.nix` 是通用 QEMU 模板，可以保留适用的配置、替换为已有配置，或显式选择由安装器生成。安装入口直接使用锁定的上游 `nixos-anywhere`，不提供探测包装脚本。
 
 ```bash
@@ -18,13 +28,15 @@ nix flake check --no-build --no-write-lock-file
 使用已经准备好的硬件配置：
 
 ```bash
-nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  --extra-files "$PWD/work/extra-files" --build-on local
 ```
 
 选择生成硬件配置时，用以下命令替代上面的命令：
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  --extra-files "$PWD/work/extra-files" --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
 ```
 
@@ -39,11 +51,14 @@ git add machines/vps/hardware-configuration.nix
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
-  -i ~/.ssh/id_ed25519 --ssh-port 22 --build-on auto
+  --extra-files "$PWD/work/extra-files" --build-on local \
+  -i ~/.ssh/id_ed25519 --ssh-port 22
 nix run .#install -- --help
 ```
 
 如需生成配置，在上述命令中追加同一生成参数即可。`.#nixos-anywhere` 与默认 `nix run .` 指向同一包。临时 kexec 环境通常使用 SSH 22，服务商防火墙需允许连接。非 Linux 本机需要 Linux 构建器或远端构建。安装完成后使用 `ssh tau@YOUR_SERVER`；root SSH 和密码登录关闭。
+
+上述 `--build-on local` 使用安装命令所在的独立 Linux 构建机，避免目标进入 kexec 后再依赖 LiveCD 临时代理构建。代理环境不会自动传入目标的 kexec 环境；同一台 LiveCD 本机安装采用[代理说明中的 disko 与 nixos-install 流程](proxy.md)。
 
 ## 已安装机器
 

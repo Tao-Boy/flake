@@ -14,6 +14,9 @@
 | `modules/nixos/` | 共享系统功能 |
 | `modules/home-manager.nix` | 接入 Home Manager，加载公共用户设置与软件源 |
 | `modules/disko.nix` | 接入 disko |
+| `modules/sops.nix` | 接入 sops-nix，配置仓库外的 age 私钥 |
+| `proxy/` | 已安装系统与 LiveCD 共用的 Xray Nix 设置及代理工具 |
+| `secrets/xray.yaml` | 用户初始化的加密代理凭据 |
 | `home/` | 用户软件配置与公共 Home Manager 设置 |
 | `users.nix` | 管理员身份、公钥 |
 

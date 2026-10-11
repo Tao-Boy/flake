@@ -14,6 +14,9 @@
 | `modules/nixos/` | 系统核心、网络、安全、服务、存储模块 |
 | `modules/home-manager.nix` | 接入 Home Manager，引用 `home/` 中的配置 |
 | `modules/disko.nix` | 接入 disko，由机器存储配置间接导入 |
+| `modules/sops.nix` | 接入 sops-nix，使用仓库外的 age 私钥 |
+| `proxy/` | 共用 Xray 的 Nix 设置和由 Nix 生成的代理工具 |
+| `secrets/xray.yaml` | 用户初始化后提交的加密代理凭据 |
 | `home/default.nix` | 公共 Home Manager 兼容设置 |
 | `home/shell.nix`、`home/cli/`、`home/programs/` | shell、按用途分类的工具、独立程序配置 |
 | `machines/vps/home.nix` | 选择该机器启用的用户软件模块 |
@@ -34,6 +37,7 @@ cd flake
 2. 在 `machines/vps/storage.nix` 核对目标整盘；默认为 `/dev/vda`，优先使用稳定的 by-id 路径。
 3. 决定保留适用于 QEMU VPS 的硬件模板，或在安装时生成真实硬件配置。
 4. 确认服务商支持 DHCP / IPv6 RA；静态网络在机器中补充[网络配置](docs/customization.md)。
+5. 执行 `nix run .#proxy -- init`，填写真实 VLESS + Reality 节点并提交 `secrets/xray.yaml`；按[代理说明](docs/proxy.md)准备部署 age 私钥。
 
 ```nix
 # users.nix
@@ -52,13 +56,18 @@ nix flake check --no-build --no-write-lock-file
 **安装会按 disko 布局清空目标磁盘。** 先备份数据并核对整盘。使用已准备好的硬件配置安装：
 
 ```bash
-nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER
+umask 077
+mkdir -p work/extra-files/nix/var/lib/sops-nix
+install -m 600 ~/.config/sops/age/keys.txt work/extra-files/nix/var/lib/sops-nix/key.txt
+nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  --extra-files "$PWD/work/extra-files" --build-on local
 ```
 
 若选择在安装时生成并替换硬件配置，显式添加上游参数：
 
 ```bash
 nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
+  --extra-files "$PWD/work/extra-files" --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/vps/hardware-configuration.nix
 ```
 
@@ -84,9 +93,12 @@ nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 
 CI 直接执行格式 / 静态检查、NixOS 求值、系统与已选用的 disko 脚本构建；Home Manager 随系统构建。仓库不保留测试目录或自定义 checks 输出。空公钥模板仅在 CI 工作区临时填入生成的公钥。
 
+默认启用本地 Xray 代理，Bash 使用 `proxy-on` / `proxy-off` 同时切换终端和 Nix 守护进程的代理。NixOS LiveCD 可运行 `nix run .#proxy -- live` 临时启用同一配置；网络完全无法下载工具时，预先复制工具闭包。加密凭据、密钥部署和 LiveCD 本机安装的完整流程见[代理说明](docs/proxy.md)。
+
 - [目录设计与迁移](docs/architecture.md)
 - [定制与新增机器](docs/customization.md)
 - [安装与更新](docs/deployment.md)
 - [用户环境与软件源](docs/home-manager.md)
 - [可选服务](docs/services.md)
+- [Xray、加密凭据与 LiveCD 代理](docs/proxy.md)
 - [检查与运维](docs/operations.md)

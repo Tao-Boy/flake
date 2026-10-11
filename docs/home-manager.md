@@ -23,6 +23,7 @@
 | 进程、磁盘、硬件诊断工具 | `home/cli/diagnostics.nix` |
 | 网络诊断工具 | `home/cli/network.nix` |
 | Git、Neovim、tmux | `home/programs/` |
+| Bash 代理变量及快捷开关 | `home/programs/proxy.nix` |
 | 每台机器的软件选择 | `machines/<name>/home.nix` |
 | Home Manager 接入 | `modules/home-manager.nix` |
 
