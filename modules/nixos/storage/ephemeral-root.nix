@@ -29,28 +29,22 @@
             mountOptions = [ "umask=0077" ];
           };
         };
-        data = {
+        home = {
+          size = lib.mkDefault "4G";
+          content = {
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/home";
+            mountOptions = [ "noatime" ];
+          };
+        };
+        nix = {
           size = "100%";
           content = {
-            type = "btrfs";
-            extraArgs = [ "-f" ];
-            # 两个子卷共享剩余磁盘空间，不需要分别指定大小。
-            subvolumes = {
-              "/nix" = {
-                mountpoint = "/nix";
-                mountOptions = [
-                  "compress=zstd"
-                  "noatime"
-                ];
-              };
-              "/home" = {
-                mountpoint = "/home";
-                mountOptions = [
-                  "compress=zstd"
-                  "noatime"
-                ];
-              };
-            };
+            type = "filesystem";
+            format = "ext4";
+            mountpoint = "/nix";
+            mountOptions = [ "noatime" ];
           };
         };
       };
