@@ -9,10 +9,10 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo |
+| `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo、`~/.ssh` 目录 |
 | `modules/base.nix` | Nix 设置、每周清理旧版本 |
 | `modules/networking.nix` | DHCP 网络 |
-| `modules/ssh.nix` | SSH 只允许公钥登录、fail2ban |
+| `modules/ssh.nix` | SSH 只允许公钥登录、主机密钥位置、fail2ban |
 | `modules/hardening.nix` | nftables 防火墙、内核网络参数 |
 | `modules/maintenance.nix` | 时间同步、fstrim、zram |
 | `modules/proxy.nix` | Xray、代理变量、`proxy-on` / `proxy-off` |

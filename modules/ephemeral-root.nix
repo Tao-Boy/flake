@@ -56,23 +56,12 @@
   # /nix 已由 NixOS 纳入启动挂载；这里只补充 /home。
   fileSystems."/home".neededForBoot = true;
 
-  # 根目录会清空，因此日志只保存在内存中，SSH 主机密钥放在持久的 /nix 分区。
+  # 根目录会清空，因此日志只保存在内存中。
   services.journald.extraConfig = ''
     Storage=volatile
     RuntimeMaxUse=64M
     MaxRetentionSec=14day
   '';
-  services.openssh.hostKeys = [
-    {
-      type = "ed25519";
-      path = "/nix/var/lib/sshd/ssh_host_ed25519_key";
-    }
-    {
-      type = "rsa";
-      bits = 4096;
-      path = "/nix/var/lib/sshd/ssh_host_rsa_key";
-    }
-  ];
   # 同时输出到显示器和串口控制台，便于在服务商的网页控制台中查看。
   boot.kernelParams = [
     "console=tty0"

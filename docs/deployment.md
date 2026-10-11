@@ -10,11 +10,11 @@ VPS 默认启用 Xray。先按[代理说明](proxy.md)用 `sops` 创建完整的
 
 ```bash
 umask 077
-mkdir -p work/extra-files/nix/var/lib/sops-nix
-install -m 600 ~/.config/sops/age/keys.txt work/extra-files/nix/var/lib/sops-nix/key.txt
+mkdir -p work/extra-files/home/tau/.ssh
+install -m 600 ~/.config/sops/age/keys.txt work/extra-files/home/tau/.ssh/age.key
 ```
 
-使用已有私钥时替换源路径。私钥留在仓库外，`work/` 中的副本不会被 Git 跟踪。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
+安装后私钥位于目标机器的 `/home/tau/.ssh/age.key`；`~/.ssh` 的归属在开机时自动改为 `tau`。使用已有私钥时替换源路径。私钥留在仓库外，`work/` 中的副本不会被 Git 跟踪。加密、代理开关以及国内网络下的 LiveCD 本机安装见[代理说明](proxy.md)。
 
 硬件配置由用户控制。`machines/vps/hardware-configuration.nix` 是通用 QEMU 模板，可以保留适用的配置、替换为已有配置，或显式选择由安装器生成。安装入口直接使用锁定的上游 `nixos-anywhere`，不提供探测包装脚本。
 
@@ -23,7 +23,7 @@ git add .
 nix flake check --no-build --no-write-lock-file
 ```
 
-**安装会清空目标磁盘。** 先备份 `/home`、应用数据及 `/nix/var/lib/sshd` 的主机私钥，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
+**安装会清空目标磁盘。** 先备份 `/home`（其中 `~/.ssh` 含主机私钥与 age 私钥）和应用数据，保存正确权限与 UID。本布局使用独立的 ext4 `/nix` 和 `/home` 分区，`/home` 默认 4 GiB，其余可用空间用于 `/nix`。安装前根据现有数据量调整 `storage.nix` 中的容量设置。已有文件系统和分区布局不能通过普通重建自动转换；需要备份、重新分区安装并恢复数据。
 
 使用已经准备好的硬件配置：
 
@@ -61,6 +61,20 @@ nix run .#install -- --help
 上述 `--build-on local` 使用安装命令所在的独立 Linux 构建机，避免目标进入 kexec 后再依赖 LiveCD 临时代理构建。代理环境不会自动传入目标的 kexec 环境；同一台 LiveCD 本机安装采用[代理说明中的 disko 与 nixos-install 流程](proxy.md)。
 
 ## 已安装机器
+
+### 密钥从 /nix 迁到 ~/.ssh
+
+旧版本把 SSH 主机密钥放在 `/nix/var/lib/sshd`，age 私钥放在 `/nix/var/lib/sops-nix/key.txt`。重建到当前配置**之前**，先在服务器上复制到新位置，否则会生成新的主机密钥（客户端提示指纹变化），Xray 配置也无法解密：
+
+```bash
+sudo install -d -m 700 -o tau -g users /home/tau/.ssh
+sudo cp -p /nix/var/lib/sshd/ssh_host_* /home/tau/.ssh/
+sudo install -m 600 /nix/var/lib/sops-nix/key.txt /home/tau/.ssh/age.key
+```
+
+重建并确认新的 SSH 会话正常、`systemctl status xray` 运行后，再删除 `/nix/var/lib/sshd` 和 `/nix/var/lib/sops-nix`。
+
+### 日常更新
 
 已有系统更新时保留当前有效的硬件配置，并迁移实际公钥、磁盘与静态网络参数。若磁盘仍采用此前的子卷布局，应按首次安装流程备份并迁移至 ext4；下面的重建命令不会转换文件系统。如需重新生成，在目标 NixOS 执行：
 
