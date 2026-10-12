@@ -66,7 +66,7 @@ nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 
 `.#vps` 选择 `flake.nix` 中的 `nixosConfigurations.vps`。新增 Nix 文件先 `git add`，再检查或重建。默认启用本地 Xray；在服务器上用 `proxy-on` / `proxy-off` 开关代理，重启后恢复开启。
 
-根目录 `/` 使用 tmpfs，重启清空；`/home` 和 `/nix` 是独立的 ext4 分区。SSH 主机密钥与 Xray 配置加密保存在仓库的 `secrets/`，开机时用 `/home/tau/.ssh/age.key` 解密。数据库、ACME 等 `/var` 状态需要额外安排持久存储。
+根目录 `/` 使用 tmpfs，重启清空；`/home` 和 `/nix` 是独立的 ext4 分区。SSH 主机密钥与 Xray 配置加密保存在仓库的 `secrets/`，开机时用服务器上的 age 私钥 `/home/tau/.config/sops/age/keys.txt` 解密；这把私钥由你自己保存和备份，不进入仓库。数据库、ACME 等 `/var` 状态需要额外安排持久存储。
 
 CI 检查 Nix 文件格式，并构建 vps 系统。详细说明：
 

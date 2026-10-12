@@ -9,7 +9,7 @@
 
 | 文件 | 内容 |
 | --- | --- |
-| `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo、`~/.ssh` 目录 |
+| `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo |
 | `modules/base.nix` | Nix 设置、每周清理旧版本 |
 | `modules/networking.nix` | DHCP 网络 |
 | `modules/sops.nix` | 接入 sops-nix，指定解密用的 age 私钥 |
