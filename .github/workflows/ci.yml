@@ -25,4 +25,4 @@ jobs:
       - name: Check formatting
         run: nix develop --no-write-lock-file --command nixfmt --check $(git ls-files '*.nix')
       - name: Build the vps system
-        run: nix build --no-link --no-write-lock-file --print-build-logs .#checks.x86_64-linux.vps
+        run: nix build --no-link --no-write-lock-file --print-build-logs .#nixosConfigurations.vps.config.system.build.toplevel

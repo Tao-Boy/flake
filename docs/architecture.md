@@ -12,17 +12,17 @@
 | `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo |
 | `modules/base.nix` | Nix 设置、每周清理旧版本 |
 | `modules/networking.nix` | DHCP 网络 |
-| `modules/sops.nix` | 接入 sops-nix，指定解密用的 age 私钥 |
-| `modules/ssh.nix` | SSH 只允许公钥登录、加密的主机密钥、fail2ban |
+| `modules/sops.nix` | 接入 sops-nix，用 SSH 主机密钥解密 |
+| `modules/ssh.nix` | SSH 只允许公钥登录、fail2ban |
 | `modules/hardening.nix` | nftables 防火墙、内核网络参数 |
 | `modules/maintenance.nix` | 时间同步、fstrim、zram |
-| `modules/proxy.nix` | Xray、代理变量、`proxy-on` / `proxy-off` |
+| `modules/proxy.nix` | Xray 与 `proxy-on` / `proxy-off` |
 | `modules/home-manager.nix` | 接入 Home Manager |
-| `modules/ephemeral-root.nix` | 磁盘分区、tmpfs 根目录、GRUB |
+| `modules/file-system.nix` | 磁盘分区、tmpfs 根目录、GRUB |
+| `modules/impermanence.nix` | 重启后保留的目录和文件 |
 | `modules/nginx.nix` | 可选：Nginx，默认未启用 |
-| `.github/ci.nix` | 仅供 CI：补上占位公钥和示例配置后构建 |
 
-外部项目的模块（disko、sops-nix、Home Manager）在用到它的文件里通过 `inputs.xxx.nixosModules.xxx` 导入。
+外部项目的模块（disko、impermanence、sops-nix、Home Manager）在用到它的文件里通过 `inputs.xxx.nixosModules.xxx` 导入。
 
 ## 看懂常见写法
 
@@ -38,7 +38,7 @@
 | `inherit inputs;` | 等同于 `inputs = inputs;` |
 | `config.sops.secrets."xray.json".path` | 读取配置中其他选项的值 |
 | `lib.mkIf cond { ... }` | 条件成立时才加入这些设置 |
-| `lib.mkForce value` | 强制覆盖别处设置的值，用于 `proxy-off` |
+| `lib.mkForce value` | 强制覆盖别处设置的值，例如取消 Xray 开机自启 |
 
 例如，在 `machines/vps/default.nix` 把 `time.timeZone = "UTC";` 改为 `"Asia/Shanghai"`；在 `machines/vps/home.nix` 删掉 `../../home/programs/tmux.nix` 一行就不再安装 tmux。软件源中，`pkgs` 是稳定版，`pkgsUnstable` 是单独锁定的 unstable 版。
 

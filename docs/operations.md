@@ -11,17 +11,16 @@ nix flake check --no-build --no-write-lock-file   # 只求值，速度快
 nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
 ```
 
-最后一条完整构建系统，包含 Home Manager 和 `proxy-off` 配置。CI 做两件事：检查 Nix 文件格式，构建 `.#checks.x86_64-linux.vps`。后者通过 `.github/ci.nix` 补上占位公钥并改用明文示例，因此仓库未填写时 CI 也能通过；产物不用于部署。CI 不连接 VPS、不写回仓库。
+最后一条完整构建系统，包含 Home Manager。CI 做同样的两件事：检查 Nix 文件格式、构建 vps 系统；CI 不解密、不连接 VPS。
 
 ## 服务与网络
 
 ```bash
 systemctl --failed
 journalctl -b -p warning
-systemctl status sshd fail2ban chronyd qemu-guest-agent
+systemctl status sshd fail2ban chronyd
 systemctl status xray sops-install-secrets
-ls /run/current-system/specialisation/   # 存在 proxy-off 说明当前为默认配置
-systemctl is-active xray
+proxy-status
 networkctl status
 resolvectl status
 ip -br address
@@ -51,12 +50,13 @@ sudo nixos-rebuild switch --rollback
 ```bash
 findmnt /
 findmnt /nix
-findmnt /home
+findmnt /home/tau   # 来自 /nix/persist/home/tau
+ls /nix/persist
 findmnt /boot
 df -h
 sudo systemctl status nix-gc.timer fstrim.timer
 ```
 
-根 tmpfs 上限为内存的 50%，按需占用，并与应用、zram 共享物理内存；大型本机构建可将 Nix `build-dir` 指向 `/nix` 下专用目录。`/nix` 与 `/home` 使用独立 ext4 分区，分别检查可用空间并安排备份；空间不足时不能直接借用另一分区的空闲容量。
+根 tmpfs 上限为内存的 50%，按需占用，并与应用、zram 共享物理内存。写在 `/`、`/etc`、`/var` 等位置、但不在 `modules/impermanence.nix` 清单中的文件，重启后消失；新增有状态的服务时把它的目录加入清单。
 
-`/var` 默认易失，数据库、fail2ban 历史、rootful 容器和 ACME 证书需单独规划持久化。SSH 主机私钥加密保存在仓库，解密用的 age 私钥由你自己保存，服务器上的副本在 `/home/tau/.config/sops/age/keys.txt`；备份须保留权限并按秘密处理，丢失后无法解密 `secrets/`。安装命令擦盘，日常更新只运行 `nixos-rebuild`。
+需要备份的是 `/nix/persist`。其中的 SSH 主机私钥同时用于解密 `secrets/`，丢失后只能用本机的管理密钥重新加密给新主机密钥。安装命令擦盘，日常更新只运行 `nixos-rebuild`。

@@ -1,8 +1,8 @@
 { config, lib, ... }:
 let
   # 本地代理地址，端口与 secrets/xray.json 中的 inbounds 一致。
-  http = "http://127.0.0.1:1081";
-  socks = "socks5h://127.0.0.1:1080";
+  http = "http://127.0.0.1:10809";
+  socks = "socks5h://127.0.0.1:10808";
 in
 {
   sops.secrets."xray.json" = {
@@ -16,14 +16,14 @@ in
     enable = true;
     settingsFile = config.sops.secrets."xray.json".path;
   };
-  systemd.services.xray.wantedBy = lib.mkForce [];
+  systemd.services.xray.wantedBy = lib.mkForce [ ];
 
-    environment.shellAliases = {
+  environment.shellAliases = {
     proxy-on = ''
       sudo systemctl start xray &&
-      export http_proxy=http://127.0.0.1:10809 &&
-      export https_proxy=http://127.0.0.1:10809 &&
-      export all_proxy=socks5h://127.0.0.1:10808
+      export http_proxy=${http} &&
+      export https_proxy=${http} &&
+      export all_proxy=${socks}
     '';
 
     proxy-off = ''
