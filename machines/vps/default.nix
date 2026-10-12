@@ -1,5 +1,4 @@
 {
-  # 这台机器使用的配置；不需要的功能删掉对应一行即可。
   imports = [
     ../../user.nix # 唯一的用户与 SSH 公钥
     ../../modules/base.nix # Nix 设置与旧版本清理
@@ -17,11 +16,7 @@
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.hostName = "vps";
   time.timeZone = "UTC";
-  services.qemuGuest.enable = true;
-
-  # 用户 tau 的软件在 home.nix 中选择。
+  
   home-manager.users.tau = ./home.nix;
-
-  # 首次安装时的系统版本，升级软件时保持不变。
   system.stateVersion = "26.05";
 }

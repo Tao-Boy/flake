@@ -2,7 +2,6 @@
 {
   imports = [ inputs.disko.nixosModules.disko ];
 
-  # 根目录在内存中，每次重启清空；50% 是上限，不会提前占用内存。
   disko.devices.nodev."/" = {
     fsType = "tmpfs";
     mountOptions = [
@@ -11,7 +10,6 @@
     ];
   };
 
-  # GPT 同时支持 BIOS / UEFI；/boot、/nix 和 /home 保存在磁盘上。
   disko.devices.disk.system = {
     type = "disk";
     content = {
