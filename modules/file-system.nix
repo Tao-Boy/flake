@@ -43,7 +43,7 @@
   };
 
   # 日志保存在持久化的 /var/log（见 modules/impermanence.nix），限制占用空间。
-  services.journald.extraConfig = "SystemMaxUse=256M";
+  services.journald.extraConfig = "SystemMaxUse=64M";
 
   # 同时输出到显示器和串口控制台，便于在服务商的网页控制台中查看。
   boot.kernelParams = [
