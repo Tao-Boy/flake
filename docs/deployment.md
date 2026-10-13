@@ -26,12 +26,14 @@
 3. 生成服务器的 SSH 主机密钥，放在安装时要复制到服务器的目录 `work/extra-files` 中（`work/` 不会被 Git 跟踪）。把 `ssh-to-age` 输出的公钥填入 `.sops.yaml` 的 `server_ssh`：
 
    ```bash
+   umask 022
    mkdir -p work/extra-files/nix/persist/etc/ssh
    ssh-keygen -t ed25519 -N "" -C vps -f work/extra-files/nix/persist/etc/ssh/ssh_host_ed25519_key
    ssh-to-age -i work/extra-files/nix/persist/etc/ssh/ssh_host_ed25519_key.pub
+   find work/extra-files -type d -exec stat -c '%a %n' {} +   # 每个目录都应为 755
    ```
 
-   不要设置 `umask 077`：安装时目录权限会原样复制到服务器，`/nix` 必须保持 `755`。`ssh-keygen` 本身会把私钥设为 `600`。
+   安装时 `work/extra-files` 中的目录权限会原样复制到服务器，`/nix` 必须是 `755`。很多系统的默认 umask 是 `002` 或 `077`，会建出 `775` 或 `700` 的目录：前者让 sshd 拒绝公钥登录，后者让普通用户无法使用 `/nix/store`。因此先执行 `umask 022`。`ssh-keygen` 本身会把私钥设为 `600`。
 
 4. 按[代理说明](proxy.md)创建 `secrets/xray.json`。修改 `.sops.yaml` 中的公钥后，重新加密已有文件：
 
