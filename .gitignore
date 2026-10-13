@@ -1,0 +1,13 @@
+/result
+/result-*
+/.direnv/
+/work/
+*.qcow2
+*.raw
+*.pem
+*.key
+.env
+.env.*
+*.agekey
+/secrets/keys.txt
+/secrets/key.txt
