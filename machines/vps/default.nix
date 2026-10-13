@@ -11,12 +11,13 @@
     ../../modules/home-manager.nix # 用户软件
     ./hardware-configuration.nix # 硬件
     ./storage.nix # 磁盘分区
+    ../../modules/impermanence.nix # 重启后需要保留的文件
   ];
 
   nixpkgs.hostPlatform = "x86_64-linux";
   networking.hostName = "vps";
   time.timeZone = "UTC";
-  
+
   home-manager.users.tau = ./home.nix;
   system.stateVersion = "26.05";
 }

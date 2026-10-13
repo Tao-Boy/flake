@@ -29,15 +29,6 @@
             mountOptions = [ "umask=0077" ];
           };
         };
-        # /home 的大小在机器的 storage.nix 中设置。
-        home = {
-          content = {
-            type = "filesystem";
-            format = "ext4";
-            mountpoint = "/home";
-            mountOptions = [ "noatime" ];
-          };
-        };
         nix = {
           size = "100%";
           content = {
@@ -51,15 +42,9 @@
     };
   };
 
-  # /nix 已由 NixOS 纳入启动挂载；这里只补充 /home。
-  fileSystems."/home".neededForBoot = true;
+  # 日志保存在持久化的 /var/log（见 modules/impermanence.nix），限制占用空间。
+  services.journald.extraConfig = "SystemMaxUse=256M";
 
-  # 根目录会清空，因此日志只保存在内存中。
-  services.journald.extraConfig = ''
-    Storage=volatile
-    RuntimeMaxUse=64M
-    MaxRetentionSec=14day
-  '';
   # 同时输出到显示器和串口控制台，便于在服务商的网页控制台中查看。
   boot.kernelParams = [
     "console=tty0"
