@@ -78,7 +78,7 @@ nixosConfigurations.edge = inputs.nixpkgs.lib.nixosSystem {
 };
 ```
 
-平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，把 `ssh-to-age` 输出的公钥加入 `.sops.yaml` 后执行 `sops updatekeys secrets/xray.json`。CI 只构建 vps；需要时在 `.github/workflows/ci.yml` 中仿照增加一项。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，把 `ssh-to-age` 输出的公钥加入 `.sops.yaml` 后执行 `sops updatekeys secrets/xray.json`。`flake.nix` 的 `checks` 自动包含 `nixosConfigurations` 中的每台机器，CI 的 `nix flake check` 会一并构建，无需修改 CI。
 
 当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md#准备)准备主机密钥：
 

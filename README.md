@@ -14,8 +14,8 @@ machines/vps/
   hardware-configuration.nix
 modules/                  系统模块，每个文件负责一件事
 home/                     用户软件与 dotfiles
-secrets/                  加密的 Xray 配置（自己创建）
-.sops.yaml                加密所用的公钥：管理密钥与服务器主机密钥
+secrets/                  加密的 Xray 配置与 SSH 私钥（自己创建）
+.sops.yaml                加密所用的公钥（管理密钥，可加入服务器主机密钥）
 ```
 
 从 `flake.nix` 开始，沿着 `machines/vps/default.nix` 的 `imports` 打开各个模块即可读完整份配置。Nix 基本写法见[结构说明](docs/architecture.md)。
@@ -66,7 +66,7 @@ nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 
 `.#vps` 选择 `flake.nix` 中的 `nixosConfigurations.vps`。新增 Nix 文件先 `git add`，再检查或重建。Xray 开机不自动启动，在服务器上用 `proxy-on` / `proxy-off` 开关。
 
-根目录 `/` 使用 tmpfs，重启清空；磁盘上只有 `/boot` 和 `/nix` 两个分区。需要保留的文件（家目录 `/home/tau`、日志、machine-id、SSH 主机密钥等）由 [impermanence](https://github.com/nix-community/impermanence) 保存在 `/nix/persist`，清单见 `modules/impermanence.nix`。Xray 配置加密保存在 `secrets/`，开机时用服务器的 SSH 主机密钥解密；主机私钥和本机的管理密钥都由你自己保存和备份，不进入仓库。
+根目录 `/` 使用 tmpfs，重启清空；磁盘上只有 `/boot` 和 `/nix` 两个分区。需要保留的文件（家目录 `/home/tau`、日志、machine-id、SSH 主机密钥等）由 [impermanence](https://github.com/nix-community/impermanence) 保存在 `/nix/persist`，清单见 `modules/impermanence.nix`。Xray 配置加密保存在 `secrets/`，开机时由 sops-nix 解密，所用密钥见[两把密钥](docs/deployment.md#两把密钥)；主机私钥和管理密钥都由你自己保存和备份，不进入仓库。
 
 CI 检查 Nix 文件格式，并构建 vps 系统。详细说明：
 

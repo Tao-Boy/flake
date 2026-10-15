@@ -2,6 +2,9 @@
   documentation.nixos.enable = false;
   environment.defaultPackages = [ ];
 
+  # 系统完全由 flake 管理，不使用 nix-channel；nixpkgs 注册表与 NIX_PATH 指向锁定的 nixpkgs。
+  nix.channel.enable = false;
+
   nix.settings = {
     experimental-features = [
       "nix-command"

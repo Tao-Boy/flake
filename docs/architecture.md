@@ -11,16 +11,17 @@
 | --- | --- |
 | `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo |
 | `modules/base.nix` | Nix 设置、每周清理旧版本 |
-| `modules/networking.nix` | DHCP 网络 |
-| `modules/sops.nix` | 接入 sops-nix，用 SSH 主机密钥解密 |
+| `modules/networking.nix` | DHCP 网络、BBR 拥塞控制 |
+| `modules/sops.nix` | 接入 sops-nix，用服务器上的 age 私钥（及 SSH 主机密钥）解密 |
 | `modules/ssh.nix` | SSH 只允许公钥登录、fail2ban |
-| `modules/hardening.nix` | nftables 防火墙、内核网络参数 |
+| `modules/hardening.nix` | nftables 防火墙、内核网络与安全参数 |
 | `modules/maintenance.nix` | 时间同步、fstrim、zram |
 | `modules/proxy.nix` | Xray 与 `proxy-on` / `proxy-off` |
 | `modules/home-manager.nix` | 接入 Home Manager |
 | `modules/file-system.nix` | 磁盘分区、tmpfs 根目录、GRUB |
 | `modules/impermanence.nix` | 重启后保留的目录和文件 |
-| `modules/nginx.nix` | 可选：Nginx，默认未启用 |
+| `modules/nginx.nix` | Nginx 反向代理 pi-web、ACME 证书（vps 已启用） |
+| `modules/docker.nix` | 可选：Docker 与 OCI 容器，默认未启用 |
 
 外部项目的模块（disko、impermanence、sops-nix、Home Manager）在用到它的文件里通过 `inputs.xxx.nixosModules.xxx` 导入。
 

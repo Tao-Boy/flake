@@ -4,13 +4,13 @@
 
 ## Nginx 与 HTTPS
 
-在现有 imports 加入：
+vps 已在 imports 中加入：
 
 ```nix
 ../../modules/nginx.nix
 ```
 
-该模块启用 Nginx 推荐参数并开放 TCP 80/443。HTTPS 还需要在主机中配置：
+该模块启用 Nginx 推荐参数、开放 TCP 80/443，并把 `pi.nullcode.cc` 反向代理到本机的 pi-web（`127.0.0.1:30141`）。ACME 设置直接写在模块中，新增站点可仿照：
 
 ```nix
 security.acme = {
@@ -27,7 +27,7 @@ services.nginx.virtualHosts."example.com" = {
 };
 ```
 
-替换域名/邮箱/后端，确保 DNS 指向服务器且服务商防火墙开放 80/443。ACME 密钥由系统在运行时生成，不进入 Git。`/var` 位于 tmpfs，启用 HTTPS 前在 `modules/impermanence.nix` 的 `directories` 中加入 `"/var/lib/acme"`，否则每次重启都会重新申请证书。
+替换域名/邮箱/后端，确保 DNS 指向服务器且服务商防火墙开放 80/443。ACME 密钥由系统在运行时生成，不进入 Git。`/var` 位于 tmpfs，`modules/impermanence.nix` 已持久化 `/var/lib/acme`，否则每次重启都会重新申请证书并可能触发 Let's Encrypt 频率限制。
 
 ## 凭据
 

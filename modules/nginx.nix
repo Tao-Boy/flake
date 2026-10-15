@@ -1,4 +1,3 @@
-{ ... }:
 let
   domain = "pi.nullcode.cc";
 in
@@ -16,6 +15,7 @@ in
   services.nginx = {
     enable = true;
 
+    recommendedOptimisation = true;
     recommendedProxySettings = true;
     recommendedTlsSettings = true;
 

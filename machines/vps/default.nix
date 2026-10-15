@@ -9,7 +9,7 @@
     ../../modules/maintenance.nix # 时间同步、zram 等
     ../../modules/proxy.nix # Xray 代理与 proxy-on / proxy-off
     ../../modules/home-manager.nix # 用户软件
-    ../../modules/nginx.nix # 用户软件
+    ../../modules/nginx.nix # Nginx 反向代理 pi-web 与 HTTPS 证书
     ./hardware-configuration.nix # 硬件
     ./storage.nix # 磁盘分区
     ../../modules/impermanence.nix # 重启后需要保留的文件

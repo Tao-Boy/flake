@@ -8,10 +8,10 @@
 nix develop
 nix fmt
 nix flake check --no-build --no-write-lock-file   # 只求值，速度快
-nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
+nix flake check --no-write-lock-file              # 同时完整构建每台机器的系统
 ```
 
-最后一条完整构建系统，包含 Home Manager。CI 做同样的两件事：检查 Nix 文件格式、构建 vps 系统；CI 不解密、不连接 VPS。
+`checks` 包含 `nixosConfigurations` 中每台机器的系统（含 Home Manager）。CI 做同样的两件事：`nix fmt -- --ci` 检查格式、`nix flake check` 构建系统；CI 不解密、不连接 VPS。
 
 ## 服务与网络
 

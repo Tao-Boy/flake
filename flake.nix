@@ -4,8 +4,9 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:NixOS/nixpkgs/nixos-unstable";
+    # Home Manager 与 nixpkgs 使用同一发行版分支，避免选项与包集不匹配。
     home-manager = {
-      url = "github:nix-community/home-manager";
+      url = "github:nix-community/home-manager/release-26.05";
       inputs.nixpkgs.follows = "nixpkgs";
     };
     disko = {
@@ -19,10 +20,7 @@
     impermanence = {
       url = "github:nix-community/impermanence";
       inputs.nixpkgs.follows = "nixpkgs";
-    };
-    pi = {
-      url = "github:earendil-works/pi";
-      inputs.nixpkgs.follows = "nixpkgs";
+      inputs.home-manager.follows = "home-manager";
     };
   };
 
@@ -37,6 +35,11 @@
         specialArgs = { inherit inputs; };
         modules = [ ./machines/vps ];
       };
+
+      # `nix flake check` 会完整构建每台机器的系统。
+      checks.${system} = builtins.mapAttrs (
+        _: machine: machine.config.system.build.toplevel
+      ) inputs.self.nixosConfigurations;
 
       packages.${system} = {
         install = pkgs.nixos-anywhere;
