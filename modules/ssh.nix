@@ -1,4 +1,5 @@
-{ config, ... }: {
+{ config, ... }:
+{
   services.openssh = {
     enable = true;
     settings = {
@@ -27,7 +28,7 @@
 
   programs.ssh.extraConfig = ''
     Match localuser tau
-      IdentityFile /run/secrets/id_ed25519
+      IdentityFile ${config.sops.secrets."id_ed25519".path}
       IdentitiesOnly yes
     Match all
   '';

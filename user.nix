@@ -2,6 +2,8 @@
   users.mutableUsers = false;
   users.users.tau = {
     isNormalUser = true;
+    # 开机即启动用户级 systemd 服务（如 pi-web），无需先登录。
+    linger = true;
     uid = 1000;
     extraGroups = [ "wheel" ];
     openssh.authorizedKeys.keys = [

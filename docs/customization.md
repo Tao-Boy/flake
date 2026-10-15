@@ -78,15 +78,16 @@ nixosConfigurations.edge = inputs.nixpkgs.lib.nixosSystem {
 };
 ```
 
-平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，把 `ssh-to-age` 输出的公钥加入 `.sops.yaml` 后执行 `sops updatekeys secrets/xray.json`。CI 只构建 vps；需要时在 `.github/workflows/ci.yml` 中仿照增加一项。
+平台在机器的 `default.nix` 中通过 `nixpkgs.hostPlatform` 声明，Home Manager 用户入口通过 `home-manager.users.tau = ./home.nix;` 指定。不需要 Home Manager 的机器删掉该行与 `modules/home-manager.nix` 导入；不需要代理的机器删掉 `modules/proxy.nix` 导入。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，并放入同一把 age 私钥（`keys.txt`），`.sops.yaml` 与 `secrets/` 无需修改。`flake.nix` 的 `checks` 自动包含 `nixosConfigurations` 中的每台机器，CI 的 `nix flake check` 会一并构建，无需修改 CI。
 
-当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md#准备)准备主机密钥：
+当前开发环境与 VPS 启动布局使用 x86_64 Linux；添加其他架构需适配工具平台和启动布局。以下远程安装需先按[安装说明](deployment.md#准备)准备主机密钥与 age 私钥：
 
 ```bash
 git add machines home
 nix flake check --no-build --no-write-lock-file
 nix run .#install -- --flake .#edge --target-host root@YOUR_SERVER \
-  --extra-files "$PWD/work/extra-files" --build-on local \
+  --extra-files "$PWD/work/extra-files" --chown /nix/persist/home/tau 1000:100 \
+  --build-on local \
   --generate-hardware-config nixos-generate-config ./machines/edge/hardware-configuration.nix
 ```
 

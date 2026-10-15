@@ -22,7 +22,7 @@
 | 文件、下载、归档工具 | `home/cli/utilities.nix` |
 | 进程、磁盘、硬件诊断工具 | `home/cli/diagnostics.nix` |
 | 网络诊断工具 | `home/cli/network.nix` |
-| Git、Neovim、tmux | `home/programs/` |
+| Git、Neovim、tmux、npm、pi-web 服务 | `home/programs/` |
 | 每台机器的软件选择 | `machines/<name>/home.nix` |
 | Home Manager 接入 | `modules/home-manager.nix` |
 
@@ -50,5 +50,7 @@ stable 包使用 `pkgs.xxx`；Git、Neovim、fzf、bat、eza、ripgrep、fd、bt
 nix flake update nixpkgs-unstable
 nix flake update nixpkgs home-manager
 ```
+
+pi 与 pi-web 不由 Nix 管理，自行用 npm 全局安装（`npm i -g ...`，安装到 `~/.npm/bin`，家目录持久化，重启后仍在）。`home/programs/pi.nix` 只定义用户服务 `pi-web`，它读取 `~/.config/pi-web/server.env`，在 `user.nix` 开启 linger 后随开机启动（`systemctl --user status pi-web`）。
 
 版本只在主动更新锁文件后改变。`home.stateVersion` 与 `system.stateVersion` 保持 `26.05`，不随软件版本升级。冲突 dotfile 备份为 `.hm-backup`；遇到冲突时检查 `home-manager-tau.service` 日志和已有备份。

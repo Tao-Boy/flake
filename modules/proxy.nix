@@ -3,6 +3,7 @@ let
   # 本地代理地址，端口与 secrets/xray.json 中的 inbounds 一致。
   http = "http://127.0.0.1:10809";
   socks = "socks5h://127.0.0.1:10808";
+  noProxy = "localhost,127.0.0.1,::1";
 in
 {
   sops.secrets."xray.json" = {
@@ -23,12 +24,13 @@ in
       sudo systemctl start xray &&
       export http_proxy=${http} &&
       export https_proxy=${http} &&
-      export all_proxy=${socks}
+      export all_proxy=${socks} &&
+      export no_proxy=${noProxy}
     '';
 
     proxy-off = ''
-      unset http_proxy https_proxy all_proxy
-      unset HTTP_PROXY HTTPS_PROXY ALL_PROXY
+      unset http_proxy https_proxy all_proxy no_proxy
+      unset HTTP_PROXY HTTPS_PROXY ALL_PROXY NO_PROXY
       sudo systemctl stop xray
     '';
 

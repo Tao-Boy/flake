@@ -16,7 +16,9 @@
       }
       "/var/log" # 系统日志
       "/var/lib/nixos" # 用户与组的 UID / GID 分配记录
-      # Docker 数据
+      "/var/lib/acme" # Let's Encrypt 证书与账户，避免每次重启重新申请而触发频率限制
+      "/var/lib/fail2ban" # 封禁记录，使 bantime-increment 跨重启生效
+      # Docker 数据（启用 modules/docker.nix 时使用）
       "/var/lib/docker"
       "/var/lib/containerd"
       "/var/lib/systemd" # 定时任务记录、随机数种子、网络状态等

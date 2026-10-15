@@ -8,10 +8,10 @@
 nix develop
 nix fmt
 nix flake check --no-build --no-write-lock-file   # 只求值，速度快
-nix build --no-link .#nixosConfigurations.vps.config.system.build.toplevel
+nix flake check --no-write-lock-file              # 同时完整构建每台机器的系统
 ```
 
-最后一条完整构建系统，包含 Home Manager。CI 做同样的两件事：检查 Nix 文件格式、构建 vps 系统；CI 不解密、不连接 VPS。
+`checks` 包含 `nixosConfigurations` 中每台机器的系统（含 Home Manager）。CI 做同样的两件事：`nix fmt -- --ci` 检查格式、`nix flake check` 构建系统；CI 不解密、不连接 VPS。
 
 ## 服务与网络
 
@@ -59,4 +59,4 @@ sudo systemctl status nix-gc.timer fstrim.timer
 
 根 tmpfs 上限为内存的 50%，按需占用，并与应用、zram 共享物理内存。写在 `/`、`/etc`、`/var` 等位置、但不在 `modules/impermanence.nix` 清单中的文件，重启后消失；新增有状态的服务时把它的目录加入清单。
 
-需要备份的是 `/nix/persist`。其中的 SSH 主机私钥同时用于解密 `secrets/`，丢失后只能用本机的管理密钥重新加密给新主机密钥。安装命令擦盘，日常更新只运行 `nixos-rebuild`。
+需要备份的是 `/nix/persist`。其中的 `home/tau/.config/sops/age/keys.txt` 是解密 `secrets/` 的 age 私钥，丢失后从本机的管理密钥复制回去即可；SSH 主机私钥决定主机指纹。安装命令擦盘，日常更新只运行 `nixos-rebuild`。

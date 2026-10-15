@@ -22,7 +22,9 @@ jobs:
       - uses: DeterminateSystems/nix-installer-action@c5a866b6ab867e88becbed4467b93592bce69f8a # v21
         with:
           determinate: false
+      # 只需 formatter（nixfmt-tree），不必构建整个开发环境。
       - name: Check formatting
-        run: nix develop --no-write-lock-file --command nixfmt --check $(git ls-files '*.nix')
-      - name: Build the vps system
-        run: nix build --no-link --no-write-lock-file --print-build-logs .#nixosConfigurations.vps.config.system.build.toplevel
+        run: nix fmt --no-write-lock-file -- --ci
+      # 求值全部输出，并构建 checks 中的每台机器。
+      - name: Check flake and build systems
+        run: nix flake check --no-write-lock-file --print-build-logs
