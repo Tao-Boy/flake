@@ -22,7 +22,7 @@
 | 文件、下载、归档工具 | `home/cli/utilities.nix` |
 | 进程、磁盘、硬件诊断工具 | `home/cli/diagnostics.nix` |
 | 网络诊断工具 | `home/cli/network.nix` |
-| Git、Neovim、tmux、npm、pi / pi-web | `home/programs/` |
+| Git、Neovim、tmux、npm、pi-web 服务 | `home/programs/` |
 | 每台机器的软件选择 | `machines/<name>/home.nix` |
 | Home Manager 接入 | `modules/home-manager.nix` |
 
@@ -44,13 +44,13 @@ Git 作者信息统一写入 `home/programs/git.nix` 的 `programs.git.settings.
 
 系统和基础工具使用 `nixos-26.05`，Home Manager 使用匹配的 `release-26.05`。用户环境沿用系统包集；`pkgsUnstable` 作为独立参数传入，不全局替换包集。
 
-stable 包使用 `pkgs.xxx`；Git、Neovim、fzf、bat、eza、ripgrep、fd、btop、pi 使用 `pkgsUnstable.xxx`。`programs.*` 模块负责安装已启用的软件，避免在 `home.packages` 重复声明。
+stable 包使用 `pkgs.xxx`；Git、Neovim、fzf、bat、eza、ripgrep、fd、btop 使用 `pkgsUnstable.xxx`。`programs.*` 模块负责安装已启用的软件，避免在 `home.packages` 重复声明。
 
 ```bash
 nix flake update nixpkgs-unstable
 nix flake update nixpkgs home-manager
 ```
 
-`pi` 编码助手（`pkgsUnstable.pi-coding-agent`）由 `home/programs/pi.nix` 安装；同一文件定义用户服务 `pi-web`，它读取 `~/.config/pi-web/server.env`，在 `user.nix` 开启 linger 后随开机启动（`systemctl --user status pi-web`）。
+pi 与 pi-web 不由 Nix 管理，自行用 npm 全局安装（`npm i -g ...`，安装到 `~/.npm/bin`，家目录持久化，重启后仍在）。`home/programs/pi.nix` 只定义用户服务 `pi-web`，它读取 `~/.config/pi-web/server.env`，在 `user.nix` 开启 linger 后随开机启动（`systemctl --user status pi-web`）。
 
 版本只在主动更新锁文件后改变。`home.stateVersion` 与 `system.stateVersion` 保持 `26.05`，不随软件版本升级。冲突 dotfile 备份为 `.hm-backup`；遇到冲突时检查 `home-manager-tau.service` 日志和已有备份。

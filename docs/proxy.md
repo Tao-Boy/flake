@@ -1,6 +1,6 @@
 # Xray 与加密 JSON
 
-Xray 读取原生 JSON 配置。配置加密保存为 `secrets/xray.json`，开机时由 sops-nix 用服务器的 SSH 主机密钥解密到 `/run/secrets/xray.json`。相关设置都在 `modules/proxy.nix`。
+Xray 读取原生 JSON 配置。配置加密保存为 `secrets/xray.json`，开机时由 sops-nix 用服务器上的 age 私钥（`/nix/persist/home/tau/.config/sops/age/keys.txt`）解密到 `/run/secrets/xray.json`。相关设置都在 `modules/proxy.nix`。
 
 ## 创建与编辑配置
 
@@ -62,7 +62,7 @@ LiveCD 无法下载 `sops`、`xray` 时，在可联网的 x86_64 Linux 机器上
 
 ## LiveCD 本机安装
 
-LiveCD 已启用代理后，按[安装说明](deployment.md#准备)准备好主机密钥，然后：
+LiveCD 已启用代理后，按[安装说明](deployment.md#准备)准备好主机密钥与 age 私钥，然后：
 
 ```bash
 nix build .#nixosConfigurations.vps.config.system.build.toplevel --out-link work/system
@@ -70,7 +70,8 @@ nix build .#nixosConfigurations.vps.config.system.build.diskoScript --out-link w
 # 下条命令会清空 storage.nix 指定的整盘，并挂载到 /mnt。
 sudo "$(readlink -f work/disko)"
 sudo cp -r work/extra-files/nix/persist /mnt/nix/
+sudo chown -R 1000:100 /mnt/nix/persist/home/tau
 sudo nixos-install --system "$(readlink -f work/system)" --no-root-passwd
 ```
 
-`cp -r` 由 root 执行，复制出的文件归 root 所有，私钥保持 `600`。完成后由你重启进入已安装系统。
+`cp -r` 由 root 执行，复制出的文件归 root 所有，私钥保持 `600`；家目录（含 age 私钥）再交还给 `tau`（UID 1000，`users` 组 GID 100）。完成后由你重启进入已安装系统。

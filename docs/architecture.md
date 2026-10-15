@@ -12,7 +12,7 @@
 | `user.nix` | 唯一的用户 `tau`、SSH 公钥、sudo |
 | `modules/base.nix` | Nix 设置、每周清理旧版本 |
 | `modules/networking.nix` | DHCP 网络、BBR 拥塞控制 |
-| `modules/sops.nix` | 接入 sops-nix，用服务器上的 age 私钥（及 SSH 主机密钥）解密 |
+| `modules/sops.nix` | 接入 sops-nix，只用服务器上的 age 私钥解密 |
 | `modules/ssh.nix` | SSH 只允许公钥登录、fail2ban |
 | `modules/hardening.nix` | nftables 防火墙、内核网络与安全参数 |
 | `modules/maintenance.nix` | 时间同步、fstrim、zram |
