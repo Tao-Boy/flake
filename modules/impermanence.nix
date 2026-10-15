@@ -16,6 +16,9 @@
       }
       "/var/log" # 系统日志
       "/var/lib/nixos" # 用户与组的 UID / GID 分配记录
+      # Docker 数据
+      "/var/lib/docker"
+      "/var/lib/containerd"
       "/var/lib/systemd" # 定时任务记录、随机数种子、网络状态等
     ];
     files = [

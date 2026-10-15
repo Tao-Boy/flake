@@ -18,4 +18,5 @@
     pkgsUnstable.ripgrep
     pkgsUnstable.fd
   ];
+  programs.uv.enable = true;
 }

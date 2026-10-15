@@ -1,4 +1,4 @@
-{config, ...}:{
+{ config, ... }: {
   # 本机选择启用的用户模块；软件配置统一在 home/ 中维护。
   imports = [
     # Shell 与常用工具。
@@ -10,5 +10,7 @@
     ../../home/programs/git.nix
     ../../home/programs/neovim.nix
     ../../home/programs/tmux.nix
+    ../../home/programs/npm.nix
+    ../../home/programs/pi.nix
   ];
 }

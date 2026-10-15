@@ -1,4 +1,4 @@
-{config, ...}:{
+{ config, ... }: {
   services.openssh = {
     enable = true;
     settings = {
@@ -10,7 +10,7 @@
       ClientAliveInterval = 300;
       ClientAliveCountMax = 2;
     };
-      hostKeys = [
+    hostKeys = [
       {
         type = "ed25519";
         path = "/etc/ssh/ssh_host_ed25519_key";
@@ -18,14 +18,14 @@
     ];
   };
 
- sops.secrets."id_ed25519" = {
-  sopsFile = ../secrets/id_ed25519;
-  format = "binary";
-  owner = "tau";
-  mode = "0600";
-};
+  sops.secrets."id_ed25519" = {
+    sopsFile = ../secrets/id_ed25519;
+    format = "binary";
+    owner = "tau";
+    mode = "0600";
+  };
 
- programs.ssh.extraConfig = ''
+  programs.ssh.extraConfig = ''
     Match localuser tau
       IdentityFile /run/secrets/id_ed25519
       IdentitiesOnly yes
