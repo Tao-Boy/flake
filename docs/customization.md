@@ -2,7 +2,7 @@
 
 ## 用户与机器差异
 
-系统只有一个用户，定义在 `modules/nixos/base/users.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。私钥、密码和令牌不进入仓库。修改用户名时，全局搜索 `tau` 一并替换用户模块、`home-manager.users.tau` 和用户目录路径；已有家目录不会自动迁移。
+系统只有一个用户，定义在 `modules/nixos/base/users.nix`：用户名 `tau`、UID 1000、SSH 公钥，属于 `wheel` 组以便使用 sudo。所有主机共用该模块中的用户公钥，以及 `secrets/id_ed25519` 中由 SOPS 加密的配套私钥；更换时按[安装说明](deployment.md#准备)同时更新两者。明文私钥、密码和令牌不进入仓库。修改用户名时，全局搜索 `tau` 一并替换用户模块、`home-manager.users.tau` 和用户目录路径；已有家目录不会自动迁移。
 
 机器的个别设置直接写在 `hosts/vps/default.nix`，例如：
 

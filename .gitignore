@@ -10,5 +10,6 @@
 .env.*
 *.agekey
 /server.json
+/id_ed25519
 /secrets/keys.txt
 /secrets/key.txt

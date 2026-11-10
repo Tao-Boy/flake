@@ -2,7 +2,7 @@
 
 ## 修改后验证
 
-先填写真实 SSH 公钥，新增文件执行 `git add`。开发环境包含 nixfmt、sops、Xray 与安装器。
+两个主机共用 `modules/nixos/base/users.nix` 中的 SSH 公钥和 `secrets/id_ed25519` 中的加密私钥，更换时同时更新。新增文件执行 `git add`；根目录的明文 `id_ed25519` 已被忽略。开发环境包含 nixfmt、sops、Xray 与安装器。
 
 ```bash
 nix develop

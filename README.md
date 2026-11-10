@@ -22,7 +22,7 @@ modules/nixos/
   base/                    通用 NixOS 模块
   server/                  服务器功能模块
 home/                     Home Manager 用户模块
-secrets/                  加密的 Xray 配置与 SSH 私钥（自己创建）
+secrets/                  加密的 Xray 配置与统一 SSH 私钥
 .sops.yaml                加密所用的 age 公钥
 ```
 
@@ -31,6 +31,7 @@ secrets/                  加密的 Xray 配置与 SSH 私钥（自己创建）
 | 想修改什么 | 修改位置 |
 | --- | --- |
 | SSH 公钥、用户名 | `modules/nixos/base/users.nix` |
+| SSH 私钥（SOPS 密文） | `secrets/id_ed25519`，更新方式见[安装说明](docs/deployment.md#准备) |
 | 主机名、时区、启用哪些功能 | `hosts/<name>/default.nix` |
 | 安装哪些用户软件 | `hosts/<name>/home.nix` |
 | 软件的具体设置 | `home/` |
@@ -45,7 +46,9 @@ secrets/                  加密的 Xray 配置与 SSH 私钥（自己创建）
 
 安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存；没有根 tmpfs，也没有 `/nix/persist` 或 impermanence 清单。
 
-Xray 的 age 私钥位于 `/home/tau/.config/sops/age/keys.txt`，SSH 主机密钥位于 `/etc/ssh/`。这两类文件都随根文件系统保留，仍然需要备份。
+`vps` 和 `oracle-arm` 共用同一对用户 SSH 密钥：公钥直接写在 `modules/nixos/base/users.nix`，私钥以 SOPS 密文保存在 `secrets/id_ed25519`，激活时解密到 `/run/secrets/id_ed25519`（所有者 `tau`，权限 `0600`），并用于 `tau` 的出站 SSH。根目录的明文 `id_ed25519` 已被 Git 忽略，只用于本机导入。
+
+SOPS 的 age 私钥位于 `/home/tau/.config/sops/age/keys.txt`，SSH 主机密钥位于 `/etc/ssh/`。这两类文件都随根文件系统保留，仍然需要备份。
 
 ## 首次使用
 
@@ -57,7 +60,7 @@ nix develop
 
 安装前准备四项：
 
-1. 在 `modules/nixos/base/users.nix` 填写自己的 SSH 公钥。
+1. 核对 `modules/nixos/base/users.nix` 中的统一 SSH 公钥；更换密钥时按[安装说明](docs/deployment.md#准备)同时更新加密私钥。
 2. 核对目标主机的磁盘文件：VPS 使用 `hosts/vps/disko-fs.nix`（默认 `/dev/vda`），Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`（默认 `/dev/sda`）。
 3. 保留硬件配置，或按[安装说明](docs/deployment.md)让 nixos-anywhere 生成。
 4. 按[安装说明](docs/deployment.md#准备)生成管理密钥和服务器 SSH 主机密钥，再按[代理说明](docs/proxy.md)检查 `secrets/client.json` 和 `secrets/server.json`。

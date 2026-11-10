@@ -1,19 +1,31 @@
 # 安装与远程更新
 
-## 两把密钥
+## 密钥
 
 | 密钥 | 保存位置 | 用途 |
 | --- | --- | --- |
+| 用户 SSH 密钥 | 公钥直接写在 `modules/nixos/base/users.nix`；私钥密文在 `secrets/id_ed25519`，运行时在 `/run/secrets/id_ed25519` | `vps` 和 `oracle-arm` 共用，用于 `tau` 登录和出站 SSH；运行时私钥属于 `tau`，权限为 `0600` |
 | 管理密钥（age） | 本机 `~/.config/sops/age/keys.txt`；服务器 `/home/tau/.config/sops/age/keys.txt` | 本机用 `sops` 创建、编辑 `secrets/`；服务器上 sops-nix 开机时用它解密 |
 | 服务器 SSH 主机密钥 | 服务器 `/etc/ssh/ssh_host_ed25519_key` | SSH 主机身份，不参与解密 |
 
-`.sops.yaml` 中只有 `admin` 一把 age 公钥，`modules/nixos/server/sops.nix` 只读取服务器上的 `keys.txt`（`sshKeyPaths = [ ]`），**文件缺失时激活失败**。两把私钥都由你自己保存和备份，不进入仓库。
+`.sops.yaml` 中只有 `admin` 一把 age 公钥，`modules/nixos/server/sops.nix` 只读取服务器上的 `keys.txt`（`sshKeyPaths = [ ]`），**文件缺失时激活失败**。用户 SSH 私钥只以 SOPS 密文进入仓库；age 私钥、SSH 主机私钥和明文用户私钥由你自己保存和备份。
 
 ## 准备
 
 本机需要支持 flakes 的 Nix、Git、SSH；目标需要 root SSH 或免密码 sudo、可用 kexec。配置同时支持 x86_64 KVM/QEMU VPS 和 Oracle Cloud Ampere aarch64 实例。
 
-1. 在 `modules/nixos/base/users.nix` 填写自己的 SSH 公钥，核对目标主机的磁盘文件：VPS 使用 `hosts/vps/disko-fs.nix`，Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`。
+1. 核对 `modules/nixos/base/users.nix` 中直接配置的 SSH 公钥。更换统一用户密钥时，把新公钥填到该模块，将配套的明文私钥临时保存为仓库根目录的 `id_ed25519`，再用现有 age 公钥加密：
+
+   ```bash
+   nix develop
+   chmod 600 id_ed25519
+   sops encrypt --input-type binary --output-type binary \
+     --filename-override secrets/id_ed25519 id_ed25519 > secrets/id_ed25519
+   ```
+
+   根目录的 `id_ed25519` 已在 `.gitignore` 中排除；提交公钥配置和 `secrets/id_ed25519` 密文即可。`modules/nixos/server/ssh.nix` 会将私钥解密到 `/run/secrets/id_ed25519`，并为 `tau` 配置 `IdentityFile` 和 `IdentitiesOnly yes`。新管理密钥须先完成下一步再加密。
+
+   核对目标主机的磁盘文件：VPS 使用 `hosts/vps/disko-fs.nix`，Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`。
 2. 生成管理密钥（已有时跳过），把输出的公钥填入 `.sops.yaml` 的 `admin`：
 
    ```bash
