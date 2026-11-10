@@ -20,7 +20,7 @@
   };
 
   sops.secrets."id_ed25519" = {
-    sopsFile = ../secrets/id_ed25519;
+    sopsFile = ../../../secrets/id_ed25519;
     format = "binary";
     owner = "tau";
     mode = "0600";

@@ -9,7 +9,7 @@ let
 in
 {
   # pi 与 pi-web 由用户自行用 npm 全局安装（npm i -g，位于 ~/.npm/bin），这里只声明服务。
-  # 用户服务默认在登录后才启动；user.nix 中的 linger 让它开机运行。
+  # 用户服务默认在登录后才启动；users.nix 中的 linger 让它开机运行。
   systemd.user.services.pi-web = {
     Unit.Description = "Pi Web";
 

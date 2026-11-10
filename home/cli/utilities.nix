@@ -2,6 +2,11 @@
 {
   home.packages = [
     pkgs.curl
+    pkgs.gcc
+    pkgs.librime
+    pkgsUnstable.typst
+    pkgs.rime-data
+    pkgs.gnumake
     pkgs.wget
     pkgs.jq
     pkgs.yq-go

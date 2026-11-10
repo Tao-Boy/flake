@@ -1,13 +1,15 @@
 { config, lib, ... }:
 let
-  # 本地代理地址，端口与 secrets/xray.json 中的 inbounds 一致。
+  # Local proxy endpoints from the client configuration.
   http = "http://127.0.0.1:10809";
   socks = "socks5h://127.0.0.1:10808";
   noProxy = "localhost,127.0.0.1,::1";
 in
 {
-  sops.secrets."xray.json" = {
-    sopsFile = ../secrets/xray.json;
+  # The client configuration is encrypted at rest and only appears under
+  # /run/secrets after sops-nix activates the system.
+  sops.secrets."client.json" = {
+    sopsFile = ../../../secrets/client.json;
     format = "json";
     key = "";
     restartUnits = [ "xray.service" ];
@@ -15,8 +17,10 @@ in
 
   services.xray = {
     enable = true;
-    settingsFile = config.sops.secrets."xray.json".path;
+    settingsFile = config.sops.secrets."client.json".path;
   };
+
+  # A client is started on demand through proxy-on.
   systemd.services.xray.wantedBy = lib.mkForce [ ];
 
   environment.shellAliases = {

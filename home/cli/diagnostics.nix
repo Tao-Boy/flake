@@ -10,4 +10,7 @@
     pkgs.usbutils
     pkgsUnstable.btop
   ];
+  home.sessionVariables = {
+    NVIM_NOTTYFAST = "1";
+  };
 }

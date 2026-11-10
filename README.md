@@ -1,36 +1,51 @@
 # flake
 
-面向 x86_64 Linux VPS 的 NixOS 配置，使用锁定的 NixOS 26.05 和 Home Manager。系统中只有一个用户 `tau`，通过 SSH 公钥登录。
+面向 x86_64 和 aarch64 Linux 主机的 NixOS 配置，使用锁定的 NixOS 26.05、Home Manager 和 disko。系统中只有一个用户 `tau`，通过 SSH 公钥登录。
 
 ## 目录
 
 ```text
-flake.nix                 入口：依赖、机器列表、工具
-user.nix                  唯一的用户与 SSH 公钥
-machines/vps/
-  default.nix             这台机器启用哪些模块
-  home.nix                这台机器安装哪些用户软件
-  storage.nix             目标磁盘
-  hardware-configuration.nix
-modules/                  系统模块，每个文件负责一件事
-home/                     用户软件与 dotfiles
+flake.nix                 依赖入口
+outputs/default.nix       NixOS 主机、检查、开发环境和格式化器
+hosts/
+  vps/
+    default.nix             x86_64 VPS 主机入口
+    disko-fs.nix            磁盘布局：/boot 加 ext4 根分区
+    hardware-configuration.nix
+    home.nix                用户模块选择
+  oracle-arm/
+    default.nix             Oracle Cloud Ampere ARM 主机入口
+    disko-fs.nix            EFI /boot 加 ext4 根分区
+    hardware-configuration.nix
+    home.nix                用户模块选择
+modules/nixos/
+  base/                    通用 NixOS 模块
+  server/                  服务器功能模块
+home/                     Home Manager 用户模块
 secrets/                  加密的 Xray 配置与 SSH 私钥（自己创建）
-.sops.yaml                加密所用的 age 公钥（管理密钥）
+.sops.yaml                加密所用的 age 公钥
 ```
 
-从 `flake.nix` 开始，沿着 `machines/vps/default.nix` 的 `imports` 打开各个模块即可读完整份配置。Nix 基本写法见[结构说明](docs/architecture.md)。
+从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。主机相关内容放在 `hosts/<name>`，可复用的系统功能放在 `modules/nixos`，用户软件放在 `home/`。当前主机入口是 `vps`（x86_64）和 `oracle-arm`（aarch64）。
 
 | 想修改什么 | 修改位置 |
 | --- | --- |
-| SSH 公钥、用户名 | `user.nix` |
-| 主机名、时区、启用哪些功能 | `machines/vps/default.nix` |
-| 安装哪些用户软件 | `machines/vps/home.nix` |
+| SSH 公钥、用户名 | `modules/nixos/base/users.nix` |
+| 主机名、时区、启用哪些功能 | `hosts/<name>/default.nix` |
+| 安装哪些用户软件 | `hosts/<name>/home.nix` |
 | 软件的具体设置 | `home/` |
-| 目标磁盘 | `machines/vps/storage.nix` |
-| 重启后保留哪些文件 | `modules/impermanence.nix` |
-| Xray 节点与路由 | `sops edit secrets/xray.json` |
-| 代理端口与开关 | `modules/proxy.nix` |
+| 目标磁盘和文件系统 | `hosts/<name>/disko-fs.nix` |
+| Xray 客户端和代理开关 | `modules/nixos/server/xray-client.nix` |
+| Xray Reality 服务端 | `modules/nixos/server/xray-server.nix` |
+| Xray 客户端配置 | `sops edit secrets/client.json` |
+| Xray 服务端配置 | `sops edit secrets/server.json` |
 | 依赖版本 | `nix flake update`，结果写入 `flake.lock` |
+
+## 文件系统
+
+安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存；没有根 tmpfs，也没有 `/nix/persist` 或 impermanence 清单。
+
+Xray 的 age 私钥位于 `/home/tau/.config/sops/age/keys.txt`，SSH 主机密钥位于 `/etc/ssh/`。这两类文件都随根文件系统保留，仍然需要备份。
 
 ## 首次使用
 
@@ -42,17 +57,17 @@ nix develop
 
 安装前准备四项：
 
-1. 在 `user.nix` 填写 `.pub` 文件的完整 SSH 公钥。
-2. 核对 `machines/vps/storage.nix` 的目标整盘，默认为 `/dev/vda`。
-3. 保留硬件配置，或按[安装说明](docs/deployment.md)让 nixos-anywhere 生成。网络默认使用 DHCP / IPv6 RA；服务商要求静态地址时在机器中补充。
-4. 按[安装说明](docs/deployment.md#准备)生成管理密钥（填写 `.sops.yaml`）和服务器 SSH 主机密钥，再按[代理说明](docs/proxy.md)创建 `secrets/xray.json`。
+1. 在 `modules/nixos/base/users.nix` 填写自己的 SSH 公钥。
+2. 核对目标主机的磁盘文件：VPS 使用 `hosts/vps/disko-fs.nix`（默认 `/dev/vda`），Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`（默认 `/dev/sda`）。
+3. 保留硬件配置，或按[安装说明](docs/deployment.md)让 nixos-anywhere 生成。
+4. 按[安装说明](docs/deployment.md#准备)生成管理密钥和服务器 SSH 主机密钥，再按[代理说明](docs/proxy.md)检查 `secrets/client.json` 和 `secrets/server.json`。
 
 ```bash
-git add user.nix machines/vps .sops.yaml secrets/
+git add hosts modules outputs .sops.yaml secrets/
 nix flake check --no-build --no-write-lock-file
 ```
 
-**首次安装会清空指定磁盘。** 核对磁盘并备份后，按[安装与远程更新](docs/deployment.md)执行完整命令，其中包含主机密钥与 age 私钥的部署。
+**首次安装会清空指定磁盘。** 核对磁盘并备份后，按[安装与远程更新](docs/deployment.md)执行完整命令。
 
 ## 日常修改
 
@@ -64,11 +79,9 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-`.#vps` 选择 `flake.nix` 中的 `nixosConfigurations.vps`。新增 Nix 文件先 `git add`，再检查或重建。Xray 开机不自动启动，在服务器上用 `proxy-on` / `proxy-off` 开关。
+`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 客户端 VPS 与 aarch64 Oracle 服务端。Oracle 服务端的 Xray 随系统启动；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。
 
-根目录 `/` 使用 tmpfs，重启清空；磁盘上只有 `/boot` 和 `/nix` 两个分区。需要保留的文件（家目录 `/home/tau`、日志、machine-id、SSH 主机密钥等）由 [impermanence](https://github.com/nix-community/impermanence) 保存在 `/nix/persist`，清单见 `modules/impermanence.nix`。Xray 配置加密保存在 `secrets/`，开机时由 sops-nix 用服务器上的 age 私钥 `/nix/persist/home/tau/.config/sops/age/keys.txt` 解密，见[两把密钥](docs/deployment.md#两把密钥)；主机私钥和管理密钥都由你自己保存和备份，不进入仓库。
-
-CI 检查 Nix 文件格式，并构建 vps 系统。详细说明：
+CI 默认构建当前 x86_64 检查；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
 
 - [配置结构与基本语法](docs/architecture.md)
 - [定制配置与新增机器](docs/customization.md)

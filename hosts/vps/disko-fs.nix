@@ -2,16 +2,11 @@
 {
   imports = [ inputs.disko.nixosModules.disko ];
 
-  disko.devices.nodev."/" = {
-    fsType = "tmpfs";
-    mountOptions = [
-      "size=50%"
-      "mode=755"
-    ];
-  };
-
+  # The VPS uses the whole disk for a persistent ext4 root filesystem.
+  # The installation command formats the configured device, so verify it first.
   disko.devices.disk.system = {
     type = "disk";
+    device = "/dev/vda";
     content = {
       type = "gpt";
       partitions = {
@@ -29,12 +24,12 @@
             mountOptions = [ "umask=0077" ];
           };
         };
-        nix = {
+        root = {
           size = "100%";
           content = {
             type = "filesystem";
             format = "ext4";
-            mountpoint = "/nix";
+            mountpoint = "/";
             mountOptions = [ "noatime" ];
           };
         };
@@ -42,21 +37,20 @@
     };
   };
 
-  # 日志保存在持久化的 /var/log（见 modules/impermanence.nix），限制占用空间。
+  # Keep the persistent journal bounded on the root filesystem.
   services.journald.extraConfig = "SystemMaxUse=64M";
 
-  # 同时输出到显示器和串口控制台，便于在服务商的网页控制台中查看。
+  # Show boot output in both the display and the provider's serial console.
   boot.kernelParams = [
     "console=tty0"
     "console=ttyS0,115200n8"
   ];
 
-  # GRUB 同时支持 BIOS 与 UEFI 启动，保留最近 10 个系统版本。
+  # GRUB supports both BIOS and UEFI boot and keeps the newest ten generations.
   boot.loader = {
     efi.canTouchEfiVariables = false;
     grub = {
       enable = true;
-      # BIOS boot 分区使 disko 自动生成同一整盘的 GRUB devices。
       efiSupport = true;
       efiInstallAsRemovable = true;
       configurationLimit = 10;
