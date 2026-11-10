@@ -17,16 +17,16 @@ hosts/
     default.nix             Oracle Cloud Ampere ARM 主机入口
     disko-fs.nix            EFI /boot 加 ext4 根分区
     hardware-configuration.nix
-    home.nix                用户模块选择
+    home.nix                用户模块选择（Oracle 当前未导入）
 modules/nixos/
   base/                    通用 NixOS 模块
-  server/                  服务器功能模块
+  server/                  服务器功能模块（Xray、Nginx、Ignis）
 home/                     Home Manager 用户模块
-secrets/                  加密的 Xray 配置与统一 SSH 私钥
+secrets/                  加密的 Xray、SSH 与 Ignis 认证凭据
 .sops.yaml                加密所用的 age 公钥
 ```
 
-从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。主机相关内容放在 `hosts/<name>`，可复用的系统功能放在 `modules/nixos`，用户软件放在 `home/`。当前主机入口是 `vps`（x86_64）和 `oracle-arm`（aarch64）。
+从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。主机相关内容放在 `hosts/<name>`，可复用的系统功能放在 `modules/nixos`；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 暂时只导入系统底座、Xray 服务端和 Podman Ignis。
 
 | 想修改什么 | 修改位置 |
 | --- | --- |
@@ -37,7 +37,8 @@ secrets/                  加密的 Xray 配置与统一 SSH 私钥
 | 软件的具体设置 | `home/` |
 | 目标磁盘和文件系统 | `hosts/<name>/disko-fs.nix` |
 | Xray 客户端和代理开关 | `modules/nixos/server/xray-client.nix` |
-| Xray Reality 服务端 | `modules/nixos/server/xray-server.nix` |
+| Xray Reality 服务端 | `modules/nixos/server/xray-server.nix`（unstable） |
+| Oracle ARM Ignis 与 Nginx | `modules/nixos/server/ignis.nix` |
 | Xray 客户端配置 | `sops edit secrets/client.json` |
 | Xray 服务端配置 | `sops edit secrets/server.json` |
 | 依赖版本 | `nix flake update`，结果写入 `flake.lock` |
@@ -82,7 +83,7 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 客户端 VPS 与 aarch64 Oracle 服务端。Oracle 服务端的 Xray 随系统启动；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。
+`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 VPS 与 aarch64 Oracle 服务端。Xray 客户端与服务端均使用 `nixpkgs-unstable`；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
 
 CI 默认构建当前 x86_64 检查；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
 

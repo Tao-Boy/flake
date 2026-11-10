@@ -5,6 +5,7 @@
 | 密钥 | 保存位置 | 用途 |
 | --- | --- | --- |
 | 用户 SSH 密钥 | 公钥直接写在 `modules/nixos/base/users.nix`；私钥密文在 `secrets/id_ed25519`，运行时在 `/run/secrets/id_ed25519` | `vps` 和 `oracle-arm` 共用，用于 `tau` 登录和出站 SSH；运行时私钥属于 `tau`，权限为 `0600` |
+| Ignis Basic Auth | `secrets/ignis.htpasswd`（SOPS 密文），运行时由 sops-nix 提供给 Nginx | 保护 `ob.nullcode.cc` 上的 Ignis vault |
 | 管理密钥（age） | 本机 `~/.config/sops/age/keys.txt`；服务器 `/home/tau/.config/sops/age/keys.txt` | 本机用 `sops` 创建、编辑 `secrets/`；服务器上 sops-nix 开机时用它解密 |
 | 服务器 SSH 主机密钥 | 服务器 `/etc/ssh/ssh_host_ed25519_key` | SSH 主机身份，不参与解密 |
 
@@ -60,6 +61,7 @@
    sops updatekeys secrets/client.json
    sops updatekeys secrets/server.json
    sops updatekeys secrets/id_ed25519
+   sops updatekeys secrets/ignis.htpasswd
    ```
 
 5. 检查：
@@ -98,6 +100,15 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 `--build-on local` 在本机构建系统，目标进入 kexec 后不需要再下载构建。国内网络下在 LiveCD 本机安装见[代理说明](proxy.md#livecd-本机安装)。
 
 ## Oracle Cloud Ampere ARM
+
+Oracle ARM 当前只启用基础系统、SSH/SOPS、Xray Reality 服务端和 Podman Ignis；Home Manager 与通用维护模块暂未导入。Xray 使用 `nixpkgs-unstable`。Ignis 使用锁定的 ARM64/AMD64 多架构镜像，持久数据位于 `/var/lib/ignis/`，并由 Nginx 在 `ob.nullcode.cc` 终止 TLS、启用 Basic Auth 和 WebSocket 代理。认证哈希保存在 `secrets/ignis.htpasswd` 的 SOPS 密文中，不要把明文密码写进 Nix 配置。
+
+部署前确认 `ob.nullcode.cc` 的 DNS 指向实例公网地址，并在 OCI 网络安全列表/NSG 放行 TCP 80、443；Xray 的 TCP 2333 也需按客户端访问范围开放。ACME 首次签发证书需要公网可达的 80/443。更换 Ignis 密码时，在本机安全终端交互生成 bcrypt 哈希并直接加密写入 SOPS 文件：
+
+```bash
+nix shell nixpkgs#apacheHttpd nixpkgs#sops -c bash -c \
+  'htpasswd -nB -C 12 admin | sops encrypt --input-type binary --output-type binary --filename-override secrets/ignis.htpasswd --output secrets/ignis.htpasswd /dev/stdin'
+```
 
 Oracle ARM 主机入口是 `.#oracle-arm`，目标平台为 `aarch64-linux`。默认磁盘写为 `/dev/sda`，但 OCI 实例的设备名可能因镜像和实例类型不同而变化；安装前在临时系统中执行 `lsblk`，再修改 [hosts/oracle-arm/disko-fs.nix](/home/tau/.config/flake/hosts/oracle-arm/disko-fs.nix:11)。
 

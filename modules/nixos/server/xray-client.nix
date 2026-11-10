@@ -1,4 +1,10 @@
-{ config, lib, ... }:
+{
+  config,
+  inputs,
+  lib,
+  pkgs,
+  ...
+}:
 let
   # Local proxy endpoints from the client configuration.
   http = "http://127.0.0.1:10809";
@@ -17,6 +23,7 @@ in
 
   services.xray = {
     enable = true;
+    package = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.xray;
     settingsFile = config.sops.secrets."client.json".path;
   };
 

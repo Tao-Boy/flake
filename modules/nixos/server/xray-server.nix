@@ -1,4 +1,9 @@
-{ config, ... }:
+{
+  config,
+  inputs,
+  pkgs,
+  ...
+}:
 {
   # The server configuration contains the Reality private key and is kept
   # encrypted at rest. sops-nix exposes it only at runtime.
@@ -11,6 +16,7 @@
 
   services.xray = {
     enable = true;
+    package = inputs.nixpkgs-unstable.legacyPackages.${pkgs.stdenv.hostPlatform.system}.xray;
     settingsFile = config.sops.secrets."server.json".path;
   };
 

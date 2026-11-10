@@ -1,4 +1,9 @@
-{ self, nixpkgs, ... }@inputs:
+{
+  self,
+  nixpkgs,
+  nixpkgs-unstable,
+  ...
+}@inputs:
 let
   systems = [
     "x86_64-linux"
@@ -10,16 +15,19 @@ let
     system:
     let
       pkgs = nixpkgs.legacyPackages.${system};
+      unstablePkgs = nixpkgs-unstable.legacyPackages.${system};
     in
     {
       install = pkgs.nixos-anywhere;
-      inherit (pkgs) sops xray;
+      inherit (pkgs) sops;
+      xray = unstablePkgs.xray;
     };
 
   devShellFor =
     system:
     let
       pkgs = nixpkgs.legacyPackages.${system};
+      unstablePkgs = nixpkgs-unstable.legacyPackages.${system};
     in
     {
       default = pkgs.mkShell {
@@ -31,7 +39,7 @@ let
           pkgs.nixfmt
           pkgs.sops
           pkgs.age
-          pkgs.xray
+          unstablePkgs.xray
         ];
       };
     };
