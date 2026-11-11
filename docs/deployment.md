@@ -103,7 +103,7 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 
 ## Oracle Cloud Ampere ARM
 
-Oracle ARM 当前只启用基础系统、SSH/SOPS、Xray Reality 服务端和 Podman Ignis；Home Manager 与通用维护模块暂未导入。Xray 使用 `nixpkgs-unstable`。Ignis 使用 `docker.io/nobbe/ignis:latest`，不锁定镜像 digest，并在每次容器启动时拉取该标签的最新镜像（`pull = "always"`）；上游发布新版后，在服务器执行 `sudo systemctl restart podman-ignis.service` 即可更新。持久数据位于 `/home/tau/ignis/`：`vaults/` 保存笔记库，`data/` 保存插件管理与同步等状态，`obsidian-app/` 保存应用缓存；镜像和容器可写层仍位于 `/var/lib/containers/storage`。Nginx 在 `ob.nullcode.cc` 终止 TLS、启用 Basic Auth 和 WebSocket 代理。认证哈希保存在 `secrets/ignis.htpasswd` 的 SOPS 密文中，不要把明文密码写进 Nix 配置。
+Oracle ARM 启用基础系统、系统 CLI 工具、SSH/SOPS、Xray Reality 服务端和 Podman Ignis；Home Manager 与通用维护模块暂未导入。`modules/nixos/base/cli.nix` 直接提供 Git、Neovim（含 `vi` / `vim` 命令）、tmux、curl、wget、rsync、jq、ripgrep、fd、file、tree、less、zip/unzip、htop、lsof、DNS 工具和 sops/age，重建后即可在普通用户与 root 的系统环境中使用。Xray 使用 `nixpkgs-unstable`。Ignis 使用 `docker.io/nobbe/ignis:latest`，不锁定镜像 digest，并在每次容器启动时拉取该标签的最新镜像（`pull = "always"`）；上游发布新版后，在服务器执行 `sudo systemctl restart podman-ignis.service` 即可更新。持久数据位于 `/home/tau/ignis/`：`vaults/` 保存笔记库，`data/` 保存插件管理与同步等状态，`obsidian-app/` 保存应用缓存；镜像和容器可写层仍位于 `/var/lib/containers/storage`。Nginx 在 `ob.nullcode.cc` 终止 TLS、启用 Basic Auth 和 WebSocket 代理。认证哈希保存在 `secrets/ignis.htpasswd` 的 SOPS 密文中，不要把明文密码写进 Nix 配置。
 
 部署前确认 `ob.nullcode.cc` 的 DNS 指向实例公网地址，并在 OCI 网络安全列表/NSG 放行 TCP 80、443；Xray 的 TCP 2333 也需按客户端访问范围开放。ACME 首次签发证书需要公网可达的 80/443。更换 Ignis 密码时，在本机安全终端交互生成 bcrypt 哈希并直接加密写入 SOPS 文件：
 
@@ -145,7 +145,7 @@ sudo cp -a /var/lib/ignis/. /home/tau/ignis/
 sudo chown -R tau:users /home/tau/ignis
 ```
 
-然后执行上面的 `nixos-rebuild test` / `switch`，再运行 `sudo systemctl start podman-ignis.service`，检查原笔记库、插件和同步状态。旧目录保留用于回退；首次安装会自动创建新的空目录，无需复制。旧目录保留用于回退；首次安装会自动创建新的空目录，无需复制。
+然后执行上面的 `nixos-rebuild test` / `switch`，再运行 `sudo systemctl start podman-ignis.service`，检查原笔记库、插件和同步状态。旧目录保留用于回退；首次安装会自动创建新的空目录，无需复制。
 
 旧版使用根 tmpfs、独立的 `/nix` 和 `/nix/persist` 保存状态。新布局会格式化目标整盘，不能通过普通重建转换；先备份旧系统的 `/home/tau`、`/etc/ssh` 和 `/nix/persist/home/tau/.config/sops/age/keys.txt`，再重新安装，最后把用户数据和 age 私钥放回 `/home/tau`。
 

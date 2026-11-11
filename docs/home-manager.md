@@ -1,6 +1,6 @@
 # Home Manager
 
-所有用户软件和 dotfiles 均放在 `home/`，由 Home Manager 随 NixOS 重建激活。主机在自己的 `home.nix` 中逐项选择：
+用户软件和 dotfiles 放在 `home/`，由 Home Manager 随 NixOS 重建激活，目前仅 VPS 启用。Oracle ARM 通过 `modules/nixos/base/cli.nix` 直接安装系统维护所需的 Git、Neovim、tmux、下载归档、诊断和 SOPS 工具，所有用户都能使用。启用 Home Manager 的主机在自己的 `home.nix` 中逐项选择：
 
 ```nix
 # hosts/vps/home.nix

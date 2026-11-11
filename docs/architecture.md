@@ -17,6 +17,7 @@
 | `modules/nixos/server/default.nix` | 组合服务器共用底座、默认 UTC 时区 |
 | `modules/nixos/base/disko.nix` | GPT、EFI `/boot`、ext4 `/`、共用 GRUB 和日志上限 |
 | `modules/nixos/base/users.nix` | 用户 `tau`、SSH 公钥、sudo |
+| `modules/nixos/base/cli.nix` | Git、Neovim、tmux、下载归档、诊断和 SOPS 工具，Oracle ARM 导入 |
 | `modules/nixos/base/core.nix` | Nix 设置、每周清理旧版本 |
 | `modules/nixos/base/networking.nix` | DHCP 网络、BBR 拥塞控制 |
 | `modules/nixos/base/security.nix` | nftables 防火墙、内核网络与安全参数 |

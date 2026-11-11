@@ -26,7 +26,7 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 .sops.yaml                加密所用的 age 公钥
 ```
 
-从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。`outputs/default.nix` 的 `hosts` 表统一登记主机名与架构，自动生成系统入口和对应架构的检查。两台机器通过 `modules/nixos/server/default.nix` 导入共用底座，主机目录保留硬件、磁盘和服务选择；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 暂时只导入系统底座、Xray 服务端和 Podman Ignis。
+从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。`outputs/default.nix` 的 `hosts` 表统一登记主机名与架构，自动生成系统入口和对应架构的检查。两台机器通过 `modules/nixos/server/default.nix` 导入共用底座，主机目录保留硬件、磁盘和服务选择；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 导入系统底座、基础 CLI 工具、Xray 服务端和 Podman Ignis。
 
 | 想修改什么 | 修改位置 |
 | --- | --- |
@@ -35,7 +35,8 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 | 主机名、架构 | `outputs/default.nix` 中的 `hosts` 表，与 `hosts/<name>/` 目录同名 |
 | 默认时区、共用系统底座 | `modules/nixos/server/default.nix` |
 | 主机时区、启用哪些功能 | `hosts/<name>/default.nix` |
-| 安装哪些用户软件 | `hosts/<name>/home.nix` |
+| Oracle ARM 的系统 CLI 工具 | `modules/nixos/base/cli.nix` |
+| 安装哪些用户软件 | `hosts/<name>/home.nix`（需启用 Home Manager） |
 | 软件的具体设置 | `home/` |
 | 目标磁盘、启动差异 | `hosts/<name>/disko-fs.nix` |
 | 共用分区布局、GRUB 与日志上限 | `modules/nixos/base/disko.nix` |
