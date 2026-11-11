@@ -24,7 +24,8 @@ in
   virtualisation.oci-containers = {
     backend = "podman";
     containers.ignis = {
-      image = "docker.io/nobbe/ignis@sha256:2049be7dfbbee5ee9fa5c0ae56efd8555ec57f2ac3275448b1c4318b8af49bb5";
+      image = "docker.io/nobbe/ignis:latest";
+      pull = "always";
       ports = [ "127.0.0.1:30141:8080" ];
       environment = {
         PUID = uid;
