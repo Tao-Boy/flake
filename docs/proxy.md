@@ -62,7 +62,7 @@ sops exec-file --no-fifo --filename server.json secrets/server.json \
 3. 客户端连接的 Oracle 公网地址；
 4. Oracle Cloud 安全列表和网络安全组中的 TCP 2333 入站规则。
 
-Oracle 配置默认把启动卷写为 `/dev/sda`，安装前先用 `lsblk` 核对设备。服务端监听 2333 后，Oracle 主机不导入 Nginx 模块，以免与 Xray 争用端口。
+Oracle 配置默认把启动卷写为 `/dev/sda`，安装前先用 `lsblk` 核对设备。Xray 监听 TCP 2333，Ignis 通过共用 Nginx 模块监听 TCP 80/443；两者使用不同端口，可以同时运行。
 
 ## 配置变更后的验证
 

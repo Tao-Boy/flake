@@ -11,6 +11,5 @@
     ../../home/programs/neovim.nix
     ../../home/programs/tmux.nix
     ../../home/programs/npm.nix
-    ../../home/programs/pi.nix
   ];
 }

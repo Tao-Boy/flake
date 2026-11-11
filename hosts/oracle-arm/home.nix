@@ -1,5 +1,5 @@
 {
-  # Oracle ARM uses the same CLI and user services as the VPS profile.
+  # Optional CLI profile; the Oracle ARM system currently does not import it.
   imports = [
     ../../home/shell.nix
     ../../home/cli/utilities.nix
@@ -9,6 +9,5 @@
     ../../home/programs/neovim.nix
     ../../home/programs/tmux.nix
     ../../home/programs/npm.nix
-    ../../home/programs/pi.nix
   ];
 }

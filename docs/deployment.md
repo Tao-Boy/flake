@@ -5,6 +5,7 @@
 | 密钥 | 保存位置 | 用途 |
 | --- | --- | --- |
 | 用户 SSH 密钥 | 公钥直接写在 `modules/nixos/base/users.nix`；私钥密文在 `secrets/id_ed25519`，运行时在 `/run/secrets/id_ed25519` | `vps` 和 `oracle-arm` 共用，用于 `tau` 登录和出站 SSH；运行时私钥属于 `tau`，权限为 `0600` |
+| pi-web 环境文件 | `secrets/server.env`（SOPS dotenv 密文），运行时在 `/run/secrets/pi-web.env`，root `0400` | pi-web 登录密码及运行时环境变量，由 Podman 读取 |
 | Ignis Basic Auth | `secrets/ignis.htpasswd`（SOPS 密文），运行时由 sops-nix 提供给 Nginx | 保护 `ob.nullcode.cc` 上的 Ignis vault |
 | 管理密钥（age） | 本机 `~/.config/sops/age/keys.txt`；服务器 `/home/tau/.config/sops/age/keys.txt` | 本机用 `sops` 创建、编辑 `secrets/`；服务器上 sops-nix 开机时用它解密 |
 | 服务器 SSH 主机密钥 | 服务器 `/etc/ssh/ssh_host_ed25519_key` | SSH 主机身份，不参与解密 |
@@ -60,6 +61,7 @@
    ```bash
    sops updatekeys secrets/client.json
    sops updatekeys secrets/server.json
+   sops updatekeys secrets/server.env
    sops updatekeys secrets/id_ed25519
    sops updatekeys secrets/ignis.htpasswd
    ```
@@ -101,7 +103,7 @@ nix run .#install -- --flake .#vps --target-host root@YOUR_SERVER \
 
 ## Oracle Cloud Ampere ARM
 
-Oracle ARM 当前只启用基础系统、SSH/SOPS、Xray Reality 服务端和 Podman Ignis；Home Manager 与通用维护模块暂未导入。Xray 使用 `nixpkgs-unstable`。Ignis 使用 `docker.io/nobbe/ignis:latest`，不锁定镜像 digest，并在每次容器启动时拉取该标签的最新镜像（`pull = "always"`）；上游发布新版后，在服务器执行 `sudo systemctl restart podman-ignis.service` 即可更新。持久数据位于 `/var/lib/ignis/`，并由 Nginx 在 `ob.nullcode.cc` 终止 TLS、启用 Basic Auth 和 WebSocket 代理。认证哈希保存在 `secrets/ignis.htpasswd` 的 SOPS 密文中，不要把明文密码写进 Nix 配置。
+Oracle ARM 当前只启用基础系统、SSH/SOPS、Xray Reality 服务端和 Podman Ignis；Home Manager 与通用维护模块暂未导入。Xray 使用 `nixpkgs-unstable`。Ignis 使用 `docker.io/nobbe/ignis:latest`，不锁定镜像 digest，并在每次容器启动时拉取该标签的最新镜像（`pull = "always"`）；上游发布新版后，在服务器执行 `sudo systemctl restart podman-ignis.service` 即可更新。持久数据位于 `/home/tau/ignis/`：`vaults/` 保存笔记库，`data/` 保存插件管理与同步等状态，`obsidian-app/` 保存应用缓存；镜像和容器可写层仍位于 `/var/lib/containers/storage`。Nginx 在 `ob.nullcode.cc` 终止 TLS、启用 Basic Auth 和 WebSocket 代理。认证哈希保存在 `secrets/ignis.htpasswd` 的 SOPS 密文中，不要把明文密码写进 Nix 配置。
 
 部署前确认 `ob.nullcode.cc` 的 DNS 指向实例公网地址，并在 OCI 网络安全列表/NSG 放行 TCP 80、443；Xray 的 TCP 2333 也需按客户端访问范围开放。ACME 首次签发证书需要公网可达的 80/443。更换 Ignis 密码时，在本机安全终端交互生成 bcrypt 哈希并直接加密写入 SOPS 文件：
 
@@ -110,7 +112,7 @@ nix shell nixpkgs#apacheHttpd nixpkgs#sops -c bash -c \
   'htpasswd -nB -C 12 admin | sops encrypt --input-type binary --output-type binary --filename-override secrets/ignis.htpasswd --output secrets/ignis.htpasswd /dev/stdin'
 ```
 
-Oracle ARM 主机入口是 `.#oracle-arm`，目标平台为 `aarch64-linux`。默认磁盘写为 `/dev/sda`，但 OCI 实例的设备名可能因镜像和实例类型不同而变化；安装前在临时系统中执行 `lsblk`，再修改 [hosts/oracle-arm/disko-fs.nix](/home/tau/.config/flake/hosts/oracle-arm/disko-fs.nix:11)。
+Oracle ARM 主机入口是 `.#oracle-arm`，目标平台为 `aarch64-linux`。默认磁盘写为 `/dev/sda`，但 OCI 实例的设备名可能因镜像和实例类型不同而变化；安装前在临时系统中执行 `lsblk`，再修改 [hosts/oracle-arm/disko-fs.nix](/home/tau/.config/flake/hosts/oracle-arm/disko-fs.nix:5)。
 
 从 x86_64 工作站安装时，优先让目标机自己构建 ARM 系统：
 
@@ -134,7 +136,38 @@ nixos-rebuild switch --flake .#oracle-arm --target-host tau@YOUR_ORACLE_IP --sud
 ```
 
 
+原先已经在 `/var/lib/ignis` 保存数据的机器，切换配置前需在 Oracle 主机上停止 Ignis 并复制数据。以下步骤适用于新路径尚无数据的首次迁移；若 `/home/tau/ignis` 已有数据，先备份并核对目录，避免覆盖同名文件：
+
+```bash
+sudo systemctl stop podman-ignis.service
+sudo install -d -m 0750 -o tau -g users /home/tau/ignis
+sudo cp -a /var/lib/ignis/. /home/tau/ignis/
+sudo chown -R tau:users /home/tau/ignis
+```
+
+然后执行上面的 `nixos-rebuild test` / `switch`，再运行 `sudo systemctl start podman-ignis.service`，检查原笔记库、插件和同步状态。旧目录保留用于回退；首次安装会自动创建新的空目录，无需复制。旧目录保留用于回退；首次安装会自动创建新的空目录，无需复制。
+
 旧版使用根 tmpfs、独立的 `/nix` 和 `/nix/persist` 保存状态。新布局会格式化目标整盘，不能通过普通重建转换；先备份旧系统的 `/home/tau`、`/etc/ssh` 和 `/nix/persist/home/tau/.config/sops/age/keys.txt`，再重新安装，最后把用户数据和 age 私钥放回 `/home/tau`。
+
+## pi-web 切换到 Podman
+
+VPS 的 pi-web 由 `podman-pi-web.service` 管理，镜像与持久化说明见[可选服务](services.md)。环境文件已经加密保存为 `secrets/server.env`，由 SOPS 在运行时解密到 `/run/secrets/pi-web.env`，Podman 启动时读取；服务器只需准备现有的 age 私钥，无需另外复制明文 `server.env`。后续使用 `sops edit secrets/server.env` 修改，保留 `PI_WEB_PASSWORD` 等变量，并使用不带 `export` 或值两侧引号的 `KEY=value` 格式。
+
+已运行旧版 npm 用户服务的机器，在 VPS 上以 `tau` 停止旧服务，释放 30141 端口：
+
+```bash
+systemctl --user disable --now pi-web.service
+```
+
+随后按下方的日常更新命令重建 VPS。Home Manager 会移除旧用户服务，NixOS 会启用 Podman 容器。检查新服务及 HTTPS 访问：
+
+```bash
+sudo systemctl status podman-pi-web.service
+sudo journalctl -u podman-pi-web.service -n 100 --no-pager
+curl -I https://pi.nullcode.cc
+```
+
+工作区 `/home/tau/pi-workspace` 由系统自动创建，容器只挂载这个目录，agent 配置、会话和项目分别保存在其中。旧的 `~/.pi`、skills 和项目保留在原处；需要复用时，应选择性复制普通文件到工作区，并避免依赖工作区外路径或指向 `/nix/store` 的符号链接。旧会话记录包含绝对工作路径，不会因复制会话文件而自动改成新路径；模型凭据也可在 Web 的 Models 面板重新配置。宿主机旧的 npm 安装可另行保留或卸载，容器不依赖它。
 
 ## 日常更新
 

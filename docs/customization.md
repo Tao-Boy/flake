@@ -13,7 +13,7 @@ time.timeZone = "Asia/Shanghai";
 zramSwap.memoryPercent = 25;
 ```
 
-系统模块在 `modules/nixos/`，用户软件在 `home/`。系统功能在主机 `default.nix` 中逐项选择，用户软件在 `home.nix` 中选择。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。
+系统模块在 `modules/nixos/`，用户软件在 `home/`。主机入口先导入 `modules/nixos/server/default.nix` 中的共用底座，再逐项选择额外系统功能；用户软件在 `home.nix` 中选择。包使用 `pkgs.xxx` 或 `pkgsUnstable.xxx`。默认 UTC 时区可在主机入口直接覆盖，`system.stateVersion` 仍由每台主机单独保留。
 
 ## 硬件配置与网络
 
@@ -27,27 +27,29 @@ zramSwap.memoryPercent = 25;
 
 ## 存储
 
-`hosts/vps/disko-fs.nix` 选择布局并声明目标整盘，disko 与 GRUB 共用该设备。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
+`hosts/<name>/disko-fs.nix` 导入 `modules/nixos/base/disko.nix` 的共用布局，并声明目标整盘和启动差异。disko 与 GRUB 共用该设备；Oracle ARM 通过 UEFI 启动，不向 BIOS 设备安装 GRUB。优先选择稳定的 `/dev/disk/by-id/...`，用 `lsblk` 核对目标。硬件配置生成不会选择磁盘擦除目标。
 
-当前布局是 GPT、1 MiB BIOS boot、512 MiB EFI `/boot`，以及占满剩余空间的 ext4 `/`。根目录直接位于硬盘；`/nix`、`/home`、`/var` 和日志都在根文件系统中持久保存，不使用根 tmpfs、`/nix/persist` 或 impermanence。
+共用布局是 GPT、512 MiB EFI `/boot`，以及占满剩余空间的 ext4 `/`；VPS 另有 1 MiB BIOS boot 分区。根目录直接位于硬盘；`/nix`、`/home`、`/var` 和日志都在根文件系统中持久保存，不使用根 tmpfs、`/nix/persist` 或 impermanence。
 
 修改磁盘布局不能通过普通重建转换。变更分区时需要备份数据，在确认目标设备后重新安装；安装命令会格式化 `disko-fs.nix` 指定的整盘。
 
 ## 新增机器
 
-复制 `hosts/vps/` 为 `hosts/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports，并把 `networking.hostName` 改为 `"edge"`。为新机器准备独立硬件文件和磁盘文件，不要沿用其他实际机器的硬件配置。在 `outputs/default.nix` 中复制 vps 的入口：
+复制 `hosts/vps/` 为 `hosts/edge/`，分别在 `default.nix` 和 `home.nix` 中调整所需系统与用户模块的 imports。为新机器准备独立硬件文件和磁盘文件，不要沿用其他实际机器的硬件配置。在 `outputs/default.nix` 的 `hosts` 表中增加一行：
 
 ```nix
-nixosConfigurations.edge = nixpkgs.lib.nixosSystem {
-  system = "x86_64-linux";
-  specialArgs = { inherit inputs; };
-  modules = [ ../hosts/edge ];
+hosts = {
+  vps = "x86_64-linux";
+  oracle-arm = "aarch64-linux";
+  edge = "x86_64-linux";
 };
 ```
 
-不需要 Home Manager 的机器删掉 `modules/nixos/base/home-manager.nix` 导入和 `home-manager.users.tau`；不需要 Xray 客户端的机器删掉 `modules/nixos/server/xray-client.nix`，不需要 Xray 服务端的机器删掉 `modules/nixos/server/xray-server.nix`。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，并准备自己的磁盘布局。`outputs/default.nix` 的 `checks` 应同步覆盖新增主机。
+表中的名字与 `hosts/<name>/` 目录同名，自动用作 `networking.hostName`。系统入口、架构和对应 `checks` 均由此生成。
 
-当前开发环境使用 x86_64 Linux，同时声明 x86_64 VPS 和 aarch64 Oracle ARM 主机；添加其他架构需适配开发工具和启动布局。以下远程安装需先按[安装说明](deployment.md#准备)准备密钥：
+不需要 Home Manager 的机器删掉 `modules/nixos/base/home-manager.nix` 导入和 `home-manager.users.tau`；不需要 Xray 客户端的机器删掉 `modules/nixos/server/xray-client.nix`，不需要 Xray 服务端的机器删掉 `modules/nixos/server/xray-server.nix`。新机器按[安装说明](deployment.md#准备)生成自己的主机密钥，并准备自己的磁盘布局。
+
+当前声明 x86_64 VPS 和 aarch64 Oracle ARM 主机；开发工具按 `hosts` 表中使用的架构自动提供，添加其他架构时需确认软件包可用性和启动布局。以下远程安装需先按[安装说明](deployment.md#准备)准备密钥：
 
 ```bash
 git add hosts modules home outputs

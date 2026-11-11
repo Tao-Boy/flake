@@ -20,7 +20,7 @@ imports = [
 | 文件、下载、归档工具 | `home/cli/utilities.nix` |
 | 进程、磁盘、硬件诊断工具 | `home/cli/diagnostics.nix` |
 | 网络诊断工具 | `home/cli/network.nix` |
-| Git、Neovim、tmux、npm、pi-web 服务 | `home/programs/` |
+| Git、Neovim、tmux、npm | `home/programs/` |
 | 每台机器的软件选择 | `hosts/<name>/home.nix` |
 | Home Manager 接入 | `modules/nixos/base/home-manager.nix` |
 
@@ -38,4 +38,4 @@ imports = [
 
 Git 作者信息统一写入 `home/programs/git.nix` 的 `programs.git.settings.user`，其他程序的选项也放在对应软件文件。
 
-pi 与 pi-web 不由 Nix 管理，自行用 npm 全局安装（`npm i -g ...`，安装到 `~/.npm/bin`，家目录位于持久化的 ext4 根文件系统中）。`home/programs/pi.nix` 只定义用户服务 `pi-web`，它读取 `~/.config/pi-web/server.env`，在 `users.nix` 开启 linger 后随开机启动。
+pi CLI 仍可自行用 npm 全局安装（`npm i -g ...`，安装到 `~/.npm/bin`）。pi-web 改由系统模块 `modules/nixos/server/pi-web.nix` 使用 Podman 运行上游镜像，不再定义 Home Manager 用户服务，也不依赖宿主机的 npm 全局安装。容器仅挂载 `/home/tau/pi-workspace`，工作目录、容器 HOME、agent 数据和项目都放在这个独立工作区内；工具由镜像提供，不依赖宿主的 Home Manager 配置。环境文件由 SOPS 从 `secrets/server.env` 解密到 `/run/secrets/pi-web.env` 后交给 Podman。部署与更新见[可选服务](services.md)。

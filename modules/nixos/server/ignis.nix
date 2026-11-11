@@ -1,10 +1,17 @@
 { config, ... }:
 let
   domain = "ob.nullcode.cc";
+  backend = "127.0.0.1:30141";
+  stateDir = "${config.users.users.tau.home}/ignis";
   uid = toString config.users.users.tau.uid;
   gid = toString config.users.groups.users.gid;
 in
 {
+  imports = [
+    ./nginx.nix
+    ./podman.nix
+  ];
+
   sops.secrets."ignis.htpasswd" = {
     sopsFile = ../../../secrets/ignis.htpasswd;
     format = "binary";
@@ -15,61 +22,41 @@ in
   };
 
   systemd.tmpfiles.rules = [
-    "d /var/lib/ignis 0750 tau users -"
-    "d /var/lib/ignis/vaults 0750 tau users -"
-    "d /var/lib/ignis/data 0750 tau users -"
-    "d /var/lib/ignis/obsidian-app 0750 tau users -"
+    "d ${stateDir} 0750 tau users -"
+    "d ${stateDir}/vaults 0750 tau users -"
+    "d ${stateDir}/data 0750 tau users -"
+    "d ${stateDir}/obsidian-app 0750 tau users -"
   ];
 
-  virtualisation.oci-containers = {
-    backend = "podman";
-    containers.ignis = {
-      image = "docker.io/nobbe/ignis:latest";
-      pull = "always";
-      ports = [ "127.0.0.1:30141:8080" ];
-      environment = {
-        PUID = uid;
-        PGID = gid;
-        WS_ORIGINS = "https://${domain}";
-      };
-      volumes = [
-        "/var/lib/ignis/vaults:/vaults"
-        "/var/lib/ignis/data:/app/data"
-        "/var/lib/ignis/obsidian-app:/app/obsidian-app"
-      ];
+  virtualisation.oci-containers.containers.ignis = {
+    image = "docker.io/nobbe/ignis:latest";
+    pull = "always";
+    ports = [ "${backend}:8080" ];
+    environment = {
+      PUID = uid;
+      PGID = gid;
+      WS_ORIGINS = "https://${domain}";
     };
+    volumes = [
+      "${stateDir}/vaults:/vaults"
+      "${stateDir}/data:/app/data"
+      "${stateDir}/obsidian-app:/app/obsidian-app"
+    ];
   };
 
-  security.acme = {
-    acceptTerms = true;
-    defaults.email = "taoboy03@qq.com";
-  };
+  services.nginx.virtualHosts.${domain} = {
+    enableACME = true;
+    forceSSL = true;
+    basicAuthFile = config.sops.secrets."ignis.htpasswd".path;
 
-  networking.firewall.allowedTCPPorts = [
-    80
-    443
-  ];
-
-  services.nginx = {
-    enable = true;
-    recommendedOptimisation = true;
-    recommendedProxySettings = true;
-    recommendedTlsSettings = true;
-
-    virtualHosts.${domain} = {
-      enableACME = true;
-      forceSSL = true;
-      basicAuthFile = config.sops.secrets."ignis.htpasswd".path;
-
-      locations."/" = {
-        proxyPass = "http://127.0.0.1:30141";
-        proxyWebsockets = true;
-        extraConfig = ''
-          proxy_read_timeout 3600s;
-          proxy_send_timeout 3600s;
-          proxy_buffering off;
-        '';
-      };
+    locations."/" = {
+      proxyPass = "http://${backend}";
+      proxyWebsockets = true;
+      extraConfig = ''
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_buffering off;
+      '';
     };
   };
 }

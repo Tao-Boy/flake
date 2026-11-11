@@ -2,7 +2,7 @@
   users.mutableUsers = false;
   users.users.tau = {
     isNormalUser = true;
-    # 开机即启动用户级 systemd 服务（如 pi-web），无需先登录。
+    # 允许用户级 systemd 服务在未登录时继续运行。
     linger = true;
     uid = 1000;
     extraGroups = [ "wheel" ];

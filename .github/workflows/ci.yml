@@ -25,6 +25,6 @@ jobs:
       # 只需 formatter（nixfmt-tree），不必构建整个开发环境。
       - name: Check formatting
         run: nix fmt --no-write-lock-file -- --ci
-      # 求值全部输出，并构建 checks 中的每台机器。
+      # 求值全部 NixOS 配置，并构建当前 x86_64 架构的 checks。
       - name: Check flake and build systems
         run: nix flake check --no-write-lock-file --print-build-logs

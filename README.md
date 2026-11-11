@@ -19,25 +19,32 @@ hosts/
     hardware-configuration.nix
     home.nix                用户模块选择（Oracle 当前未导入）
 modules/nixos/
-  base/                    通用 NixOS 模块
-  server/                  服务器功能模块（Xray、Nginx、Ignis）
+  base/                    通用 NixOS 模块与共享磁盘布局
+  server/                  共用服务器入口及 Xray、Nginx、Ignis 等服务
 home/                     Home Manager 用户模块
-secrets/                  加密的 Xray、SSH 与 Ignis 认证凭据
+secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 .sops.yaml                加密所用的 age 公钥
 ```
 
-从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。主机相关内容放在 `hosts/<name>`，可复用的系统功能放在 `modules/nixos`；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 暂时只导入系统底座、Xray 服务端和 Podman Ignis。
+从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。`outputs/default.nix` 的 `hosts` 表统一登记主机名与架构，自动生成系统入口和对应架构的检查。两台机器通过 `modules/nixos/server/default.nix` 导入共用底座，主机目录保留硬件、磁盘和服务选择；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 暂时只导入系统底座、Xray 服务端和 Podman Ignis。
 
 | 想修改什么 | 修改位置 |
 | --- | --- |
 | SSH 公钥、用户名 | `modules/nixos/base/users.nix` |
 | SSH 私钥（SOPS 密文） | `secrets/id_ed25519`，更新方式见[安装说明](docs/deployment.md#准备) |
-| 主机名、时区、启用哪些功能 | `hosts/<name>/default.nix` |
+| 主机名、架构 | `outputs/default.nix` 中的 `hosts` 表，与 `hosts/<name>/` 目录同名 |
+| 默认时区、共用系统底座 | `modules/nixos/server/default.nix` |
+| 主机时区、启用哪些功能 | `hosts/<name>/default.nix` |
 | 安装哪些用户软件 | `hosts/<name>/home.nix` |
 | 软件的具体设置 | `home/` |
-| 目标磁盘和文件系统 | `hosts/<name>/disko-fs.nix` |
+| 目标磁盘、启动差异 | `hosts/<name>/disko-fs.nix` |
+| 共用分区布局、GRUB 与日志上限 | `modules/nixos/base/disko.nix` |
 | Xray 客户端和代理开关 | `modules/nixos/server/xray-client.nix` |
 | Xray Reality 服务端 | `modules/nixos/server/xray-server.nix`（unstable） |
+| 共用 Nginx 与 ACME 设置 | `modules/nixos/server/nginx.nix` |
+| 共用 Podman 后端与镜像存储路径 | `modules/nixos/server/podman.nix` |
+| VPS pi-web 容器与反向代理 | `modules/nixos/server/pi-web.nix` |
+| pi-web 环境变量（SOPS 密文） | `sops edit secrets/server.env` |
 | Oracle ARM Ignis 与 Nginx | `modules/nixos/server/ignis.nix` |
 | Xray 客户端配置 | `sops edit secrets/client.json` |
 | Xray 服务端配置 | `sops edit secrets/server.json` |
@@ -46,6 +53,8 @@ secrets/                  加密的 Xray、SSH 与 Ignis 认证凭据
 ## 文件系统
 
 安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存；没有根 tmpfs，也没有 `/nix/persist` 或 impermanence 清单。
+
+pi-web 与 Ignis 的 Podman 镜像及容器可写层统一存放在 `/var/lib/containers/storage`。pi-web 的工作目录与挂载数据位于 `/home/tau/pi-workspace`；Ignis 的笔记、插件与应用缓存位于 `/home/tau/ignis`。
 
 `vps` 和 `oracle-arm` 共用同一对用户 SSH 密钥：公钥直接写在 `modules/nixos/base/users.nix`，私钥以 SOPS 密文保存在 `secrets/id_ed25519`，激活时解密到 `/run/secrets/id_ed25519`（所有者 `tau`，权限 `0600`），并用于 `tau` 的出站 SSH。根目录的明文 `id_ed25519` 已被 Git 忽略，只用于本机导入。
 
@@ -83,7 +92,7 @@ nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
 nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
 ```
 
-`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 VPS 与 aarch64 Oracle 服务端。Xray 客户端与服务端均使用 `nixpkgs-unstable`；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
+`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 VPS 与 aarch64 Oracle 服务端。Xray 客户端与服务端均使用 `nixpkgs-unstable`；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。VPS 的 pi-web 使用 `ghcr.io/agegr/pi-web:latest`，由 Podman 运行并通过 `pi.nullcode.cc` 提供 HTTPS，工作目录和数据位于 `/home/tau/pi-workspace`，环境文件由 SOPS 从 `secrets/server.env` 解密提供。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
 
 CI 默认构建当前 x86_64 检查；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
 

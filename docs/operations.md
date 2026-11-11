@@ -7,11 +7,11 @@
 ```bash
 nix develop
 nix fmt
-nix flake check --no-build --no-write-lock-file   # 只求值，速度快
-nix flake check --no-write-lock-file              # 同时完整构建每台机器的系统
+nix flake check --all-systems --no-build --no-write-lock-file   # 求值全部架构，不构建
+nix flake check --no-write-lock-file                          # 构建当前架构的主机系统
 ```
 
-`checks` 包含 `nixosConfigurations` 中的每台机器。CI 做同样的两件事：检查格式并构建系统；CI 不解密、不连接 VPS。
+`checks` 由 `hosts` 表自动生成，按主机架构分组。当前 x86_64 CI 检查格式并构建 VPS；Oracle ARM 的构建需在 ARM 主机或配置好 ARM builder 的环境中执行 `nix flake check --system aarch64-linux --no-write-lock-file`。CI 不解密、不连接 VPS。
 
 ## 服务与网络
 
@@ -29,6 +29,7 @@ ss -tulpn
 sudo nft list ruleset
 sudo fail2ban-client status sshd
 systemctl status home-manager-tau.service
+sudo systemctl status podman-pi-web.service
 ```
 
 修改用户名后替换 Home Manager 服务名。DHCP / RA 应提供地址、路由、DNS；服务商只支持静态配置时应主动在机器入口声明。软件防火墙与服务商防火墙须同时允许 SSH 端口。
