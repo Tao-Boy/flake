@@ -1,10 +1,10 @@
 # 可选服务
 
-默认启用 VPS 所需服务；Oracle ARM 当前仅启用 Xray Reality 与 Ignis。额外服务通过对应主机的 `imports` 显式启用，再直接填写原生选项。
+`vps-pi` 启用 Xray 客户端、pi-web、Podman 和 Nginx/ACME；`vps-dev` 启用开发环境和 Xray 客户端；Oracle ARM 启用 Xray Reality 与 Ignis。额外服务通过对应主机的 `imports` 显式启用，再直接填写原生选项。
 
 ## pi-web 容器
 
-VPS 使用上游发布的 `ghcr.io/agegr/pi-web:latest`，通过 NixOS 的 OCI containers 模块交给 Podman 管理。pi-web 和 Ignis 都导入 `modules/nixos/server/podman.nix`，镜像与容器可写层统一存储在 `/var/lib/containers/storage`。镜像不锁定 digest，每次服务启动都会拉取最新标签。容器内监听 `0.0.0.0:30141`，宿主只发布 `127.0.0.1:30141`，由 Nginx 在 `pi.nullcode.cc` 提供 HTTPS 和 WebSocket。
+`vps-pi` 使用上游发布的 `ghcr.io/agegr/pi-web:latest`，通过 NixOS 的 OCI containers 模块交给 Podman 管理。pi-web 和 Ignis 都导入 `modules/nixos/server/podman.nix`，镜像与容器可写层统一存储在 `/var/lib/containers/storage`。镜像不锁定 digest，每次服务启动都会拉取最新标签。容器内监听 `0.0.0.0:30141`，宿主只发布 `127.0.0.1:30141`，由 Nginx 在 `pi.nullcode.cc` 提供 HTTPS 和 WebSocket。
 
 容器只将 `/home/tau/pi-workspace` 按同一路径读写挂载，工作目录与容器的 `HOME` 均设为该目录；不挂载 `/nix` 或整个宿主家目录。目录由系统以 `0700 tau users` 自动创建，容器按 `tau` 的 UID 和 `users` 的 GID 运行。agent 数据位于 `pi-workspace/.pi/agent`，全局 skills 可放在 `pi-workspace/.agents/skills`，项目也放在工作区内。Pi Web 的“使用默认目录”会在工作区下创建 `pi-cwd/YYYYMMDD`。这些数据随工作区持久保存；宿主原有的 `.pi` 配置、会话和项目不会自动导入。
 
@@ -28,7 +28,7 @@ sudo journalctl -u podman-pi-web.service -f
 
 ## Nginx 与 HTTPS
 
-VPS 已在 imports 中加入：
+`hosts/vps-pi/default.nix` 已在 imports 中加入：
 
 ```nix
 ../../modules/nixos/server/pi-web.nix
@@ -47,7 +47,7 @@ services.nginx.virtualHosts."example.com" = {
 };
 ```
 
-替换域名和后端；需要更换 ACME 邮箱时修改共用 Nginx 模块。确保 DNS 指向服务器且服务商防火墙开放 80/443。ACME 密钥由系统在运行时生成，不进入 Git。根文件系统是持久 ext4，因此 `/var/lib/acme` 重启后仍然存在。
+替换域名和后端；需要更换 ACME 邮箱时修改共用 Nginx 模块。确保 DNS 指向服务器且服务商防火墙开放 80/443。ACME 密钥由系统在运行时生成，不进入 Git。按仓库 ext4 根布局安装后，`/var/lib/acme` 重启后仍然存在；当前本机旧 tmpfs 布局的迁移见[部署说明](deployment.md#旧布局迁移到-ext4-根分区)。
 
 Oracle ARM 的 Ignis 使用独立模块 `modules/nixos/server/ignis.nix`：Podman 容器只绑定 localhost，Nginx 在 `ob.nullcode.cc` 提供 HTTPS、Basic Auth 和 WebSocket 代理；Basic Auth 的 htpasswd 文件由 SOPS 在运行时解密。OCI 网络层仍需开放 TCP 80/443 才能签发和续期 ACME 证书。
 
@@ -72,4 +72,4 @@ Ignis 的 Basic Auth 哈希位于 SOPS 加密的 `secrets/ignis.htpasswd`，不�
 systemd.services.app.serviceConfig.EnvironmentFile = "/home/tau/.config/app/runtime.env";
 ```
 
-文件权限设为仅用户或服务可读（例如 `0600`）。家目录和 `/var` 都在持久化的 ext4 根文件系统中；运行时路径仍需由管理员或相应服务创建。
+文件权限设为仅用户或服务可读（例如 `0600`）。按仓库布局安装后，家目录和 `/var` 都在持久化的 ext4 根文件系统中；运行时路径仍需由管理员或相应服务创建。

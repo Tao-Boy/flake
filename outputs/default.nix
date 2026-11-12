@@ -9,7 +9,8 @@ let
 
   # 主机名和架构只在这里登记；系统入口和检查由此生成。
   hosts = {
-    vps = "x86_64-linux";
+    vps-pi = "x86_64-linux";
+    vps-dev = "x86_64-linux";
     oracle-arm = "aarch64-linux";
   };
   systems = lib.unique (builtins.attrValues hosts);

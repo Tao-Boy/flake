@@ -8,11 +8,12 @@
 4. `hosts/<name>/disko-fs.nix`：导入共用磁盘布局，声明目标磁盘和 BIOS / UEFI 等主机差异。
 5. `hosts/<name>/home.nix`：选择用户软件，具体设置在 `home/`。
 
-主机目录只保存主机差异；可复用的功能放在 `modules/nixos/{base,server}`。`modules/nixos/server/default.nix` 显式组合用户、Nix、网络、安全、SOPS 与 SSH，并将默认时区设为 UTC；maintenance 和 Home Manager 由需要的主机单独选择。模块通过 `imports` 明确导入，不自动扫描目录。
+主机目录只保存主机差异；可复用的功能放在 `modules/nixos/{base,server}`。`modules/nixos/server/default.nix` 显式组合用户、Nix、网络、安全、SOPS 与 SSH，并将默认时区设为 UTC。`vps-pi` 和 `vps-dev` 都导入 maintenance、Home Manager 和 Xray 客户端；前者保留原 VPS 的全部服务，后者保留全部现有 home 模块并增加开发工具，不导入 pi-web、Podman、Nginx、ACME 或应用 secrets。`oracle-arm` 保持原有系统 CLI、Xray 服务端和 Ignis 角色。模块通过 `imports` 明确导入，不自动扫描目录。
 
 | 文件 | 内容 |
 | --- | --- |
-| `hosts/vps/` | x86_64 VPS 主机 |
+| `hosts/vps-pi/` | x86_64 pi-web VPS，原 VPS 配置改名 |
+| `hosts/vps-dev/` | x86_64 开发服务器，独立硬件、磁盘和用户模块选择 |
 | `hosts/oracle-arm/` | Oracle Cloud Ampere aarch64 主机 |
 | `modules/nixos/server/default.nix` | 组合服务器共用底座、默认 UTC 时区 |
 | `modules/nixos/base/disko.nix` | GPT、EFI `/boot`、ext4 `/`、共用 GRUB 和日志上限 |
@@ -31,10 +32,14 @@
 | `modules/nixos/server/podman.nix` | 共用 Podman 后端、`/var/lib/containers/storage` 镜像与可写层存储 |
 | `modules/nixos/server/pi-web.nix` | Podman pi-web、pi-workspace 挂载、SOPS 环境文件与 HTTPS 代理 |
 | `modules/nixos/server/ignis.nix` | Ignis 容器、`~/ignis` 笔记与插件目录、HTTPS 代理和认证 |
-| `hosts/vps/disko-fs.nix` | VPS 目标磁盘、BIOS boot 分区和串口参数 |
+| `home/cli/development.nix` | vps-dev 额外使用的 Python 3、pkg-config、GDB |
+| `hosts/vps-pi/disko-fs.nix` | `/dev/vda`、BIOS boot 分区和串口参数 |
+| `hosts/vps-dev/disko-fs.nix` | 开发机独立的 `/dev/sda` 磁盘与启动设置 |
 | `hosts/oracle-arm/disko-fs.nix` | Oracle ARM 目标磁盘和 UEFI 启动设置 |
 
 外部项目的模块（disko、sops-nix、Home Manager）在实际使用它的文件里通过 `inputs.xxx.nixosModules.xxx` 导入。
+
+`outputs/default.nix` 的主机表登记 `vps-pi`、`vps-dev`、`oracle-arm`，名称同时决定主机目录、flake 输出和 `networking.hostName`。原 VPS 配置改名本身无需擦盘，新的 hostname 需要重建并激活才生效。当前本机仍是根 tmpfs 的旧布局，转为表中描述的 ext4 根布局必须按[部署说明](deployment.md#旧布局迁移到-ext4-根分区)备份重装。
 
 ## 看懂常见写法
 
@@ -49,7 +54,7 @@
 | `inherit inputs;` | 等同于 `inputs = inputs;` |
 | `lib.mkIf cond { ... }` | 条件成立时才加入设置 |
 
-例如，在 `hosts/vps/default.nix` 或 `hosts/oracle-arm/default.nix` 添加 `time.timeZone = "Asia/Shanghai";` 可以覆盖共用底座的 UTC 默认值；在 VPS 的 `home.nix` 中删掉 `../../home/programs/tmux.nix` 一行就不再安装 tmux。软件源中，`pkgs` 是稳定版，`pkgsUnstable` 是单独锁定的 unstable 版。
+例如，在 `hosts/vps-pi/default.nix`、`hosts/vps-dev/default.nix` 或 `hosts/oracle-arm/default.nix` 添加 `time.timeZone = "Asia/Shanghai";` 可以覆盖共用底座的 UTC 默认值；在某台 x86_64 主机的 `home.nix` 中删掉 `../../home/programs/tmux.nix` 一行就不再为该主机安装 tmux。软件源中，`pkgs` 是稳定版，`pkgsUnstable` 是单独锁定的 unstable 版。
 
 `system.stateVersion` 和 `home.stateVersion` 表示首次安装时的兼容版本，升级软件时保持原值。
 

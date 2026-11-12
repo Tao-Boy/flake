@@ -2,17 +2,30 @@
 
 面向 x86_64 和 aarch64 Linux 主机的 NixOS 配置，使用锁定的 NixOS 26.05、Home Manager 和 disko。系统中只有一个用户 `tau`，通过 SSH 公钥登录。
 
+| 主机 | 角色 | 目标磁盘 |
+| --- | --- | --- |
+| `vps-pi` | x86_64：原 VPS 的全部服务，包括 Home Manager、Xray 客户端、pi-web、Podman 和 Nginx/ACME | `/dev/vda`（当前本机 `lsblk` 确认为 60 GiB） |
+| `vps-dev` | x86_64：开发服务器，Home Manager、Xray 客户端及开发工具 | `/dev/sda` |
+| `oracle-arm` | aarch64：Xray Reality 服务端、Podman Ignis | `/dev/sda` |
+
+原 `hosts/vps` 配置改名为 `hosts/vps-pi`，flake 输出和系统 hostname 均为 `vps-pi`；修改仓库配置后，必须在目标机重建并激活才会生效。主机改名本身无需擦盘；当前本机仍是根 `/` 为 tmpfs 的旧布局，必须按[旧布局迁移说明](docs/deployment.md#旧布局迁移到-ext4-根分区)备份重装，不能用 `nixos-rebuild` 原地转换为新 ext4 布局。
+
 ## 目录
 
 ```text
 flake.nix                 依赖入口
 outputs/default.nix       NixOS 主机、检查、开发环境和格式化器
 hosts/
-  vps/
-    default.nix             x86_64 VPS 主机入口
-    disko-fs.nix            磁盘布局：/boot 加 ext4 根分区
+  vps-pi/
+    default.nix             x86_64 pi-web VPS 主机入口
+    disko-fs.nix            /dev/vda：/boot 加 ext4 根分区
     hardware-configuration.nix
-    home.nix                用户模块选择
+    home.nix                原 VPS 的全部用户模块
+  vps-dev/
+    default.nix             x86_64 开发服务器入口
+    disko-fs.nix            /dev/sda：/boot 加 ext4 根分区
+    hardware-configuration.nix
+    home.nix                全部现有用户模块，加 development.nix
   oracle-arm/
     default.nix             Oracle Cloud Ampere ARM 主机入口
     disko-fs.nix            EFI /boot 加 ext4 根分区
@@ -26,7 +39,7 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 .sops.yaml                加密所用的 age 公钥
 ```
 
-从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。`outputs/default.nix` 的 `hosts` 表统一登记主机名与架构，自动生成系统入口和对应架构的检查。两台机器通过 `modules/nixos/server/default.nix` 导入共用底座，主机目录保留硬件、磁盘和服务选择；Home Manager 用户软件目前仅由 VPS 导入。Oracle ARM 导入系统底座、基础 CLI 工具、Xray 服务端和 Podman Ignis。
+从 `flake.nix` 进入 `outputs/default.nix`，再沿着 `hosts/<name>/default.nix` 的 `imports` 打开配置即可读完整份系统。`outputs/default.nix` 的 `hosts` 表统一登记三台主机的名称与架构，自动生成系统入口和对应架构的检查。三台机器通过 `modules/nixos/server/default.nix` 导入共用底座，主机目录保留各自的硬件、磁盘和服务选择。`vps-pi` 与 `vps-dev` 均启用 maintenance、Home Manager 和 Xray 客户端；`vps-pi` 保留原 VPS 的全部服务，`vps-dev` 使用原 VPS 的全部用户模块，另由 `home/cli/development.nix` 增加 Python 3、pkg-config、GDB，不导入 pi-web、Podman、Nginx、ACME 或应用 secrets。Oracle ARM 保持系统底座、基础 CLI 工具、Xray 服务端和 Podman Ignis。
 
 | 想修改什么 | 修改位置 |
 | --- | --- |
@@ -44,7 +57,7 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 | Xray Reality 服务端 | `modules/nixos/server/xray-server.nix`（unstable） |
 | 共用 Nginx 与 ACME 设置 | `modules/nixos/server/nginx.nix` |
 | 共用 Podman 后端与镜像存储路径 | `modules/nixos/server/podman.nix` |
-| VPS pi-web 容器与反向代理 | `modules/nixos/server/pi-web.nix` |
+| vps-pi 的 pi-web 容器与反向代理 | `modules/nixos/server/pi-web.nix` |
 | pi-web 环境变量（SOPS 密文） | `sops edit secrets/server.env` |
 | Oracle ARM Ignis 与 Nginx | `modules/nixos/server/ignis.nix` |
 | Xray 客户端配置 | `sops edit secrets/client.json` |
@@ -53,13 +66,13 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 
 ## 文件系统
 
-安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存；没有根 tmpfs，也没有 `/nix/persist` 或 impermanence 清单。
+仓库定义的安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。按此布局安装后，根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存，不使用根 tmpfs、`/nix/persist` 或 impermanence 清单。当前本机根 `/` 仍为 tmpfs，旧磁盘布局中仍有 `/nix/persist`；这不代表仓库新版布局已经部署。
 
 pi-web 与 Ignis 的 Podman 镜像及容器可写层统一存放在 `/var/lib/containers/storage`。pi-web 的工作目录与挂载数据位于 `/home/tau/pi-workspace`；Ignis 的笔记、插件与应用缓存位于 `/home/tau/ignis`。
 
-`vps` 和 `oracle-arm` 共用同一对用户 SSH 密钥：公钥直接写在 `modules/nixos/base/users.nix`，私钥以 SOPS 密文保存在 `secrets/id_ed25519`，激活时解密到 `/run/secrets/id_ed25519`（所有者 `tau`，权限 `0600`），并用于 `tau` 的出站 SSH。根目录的明文 `id_ed25519` 已被 Git 忽略，只用于本机导入。
+`vps-pi`、`vps-dev` 和 `oracle-arm` 共用同一对用户 SSH 密钥：公钥直接写在 `modules/nixos/base/users.nix`，私钥以 SOPS 密文保存在 `secrets/id_ed25519`，激活时解密到 `/run/secrets/id_ed25519`（所有者 `tau`，权限 `0600`），并用于 `tau` 的出站 SSH。根目录的明文 `id_ed25519` 已被 Git 忽略，只用于本机导入。
 
-SOPS 的 age 私钥位于 `/home/tau/.config/sops/age/keys.txt`，SSH 主机密钥位于 `/etc/ssh/`。这两类文件都随根文件系统保留，仍然需要备份。
+SOPS 的 age admin 私钥位于 `/home/tau/.config/sops/age/keys.txt`，可在三台主机共用；SSH 主机密钥位于 `/etc/ssh/`，**不同服务器不能复制使用同一 SSH 主机私钥**。安装文件分别放在 `work/vps-pi/extra-files`、`work/vps-dev/extra-files` 和 `work/oracle-arm/extra-files`。按新布局安装后，这两类密钥都随根文件系统保留，仍然需要备份。
 
 ## 首次使用
 
@@ -72,12 +85,12 @@ nix develop
 安装前准备四项：
 
 1. 核对 `modules/nixos/base/users.nix` 中的统一 SSH 公钥；更换密钥时按[安装说明](docs/deployment.md#准备)同时更新加密私钥。
-2. 核对目标主机的磁盘文件：VPS 使用 `hosts/vps/disko-fs.nix`（默认 `/dev/vda`），Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`（默认 `/dev/sda`）。
+2. 核对目标主机的磁盘文件：`vps-pi` 使用 `hosts/vps-pi/disko-fs.nix`（`/dev/vda`），`vps-dev` 使用 `hosts/vps-dev/disko-fs.nix`（`/dev/sda`），Oracle ARM 使用 `hosts/oracle-arm/disko-fs.nix`（默认 `/dev/sda`）。
 3. 保留硬件配置，或按[安装说明](docs/deployment.md)让 nixos-anywhere 生成。
 4. 按[安装说明](docs/deployment.md#准备)生成管理密钥和服务器 SSH 主机密钥，再按[代理说明](docs/proxy.md)检查 `secrets/client.json` 和 `secrets/server.json`。
 
 ```bash
-git add hosts modules outputs .sops.yaml secrets/
+git add hosts modules home outputs .sops.yaml secrets/
 nix flake check --no-build --no-write-lock-file
 ```
 
@@ -85,17 +98,19 @@ nix flake check --no-build --no-write-lock-file
 
 ## 日常修改
 
+以下命令适用于已经采用仓库 ext4 根布局的主机；当前 tmpfs 根布局先按迁移说明备份重装。
+
 ```bash
 nix develop
 nix fmt
-nixos-rebuild test --flake .#vps --target-host tau@YOUR_SERVER --sudo
+nixos-rebuild test --flake .#vps-pi --target-host tau@YOUR_PI_SERVER --sudo
 # 验证网络与第二个 SSH 会话后保存为启动默认配置。
-nixos-rebuild switch --flake .#vps --target-host tau@YOUR_SERVER --sudo
+nixos-rebuild switch --flake .#vps-pi --target-host tau@YOUR_PI_SERVER --sudo
 ```
 
-`.#vps` 和 `.#oracle-arm` 分别选择 x86_64 VPS 与 aarch64 Oracle 服务端。Xray 客户端与服务端均使用 `nixpkgs-unstable`；VPS 客户端需要在服务器上用 `proxy-on` / `proxy-off` 开关。VPS 的 pi-web 使用 `ghcr.io/agegr/pi-web:latest`，由 Podman 运行并通过 `pi.nullcode.cc` 提供 HTTPS，工作目录和数据位于 `/home/tau/pi-workspace`，环境文件由 SOPS 从 `secrets/server.env` 解密提供。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
+`.#vps-pi`、`.#vps-dev` 和 `.#oracle-arm` 分别选择 pi-web VPS、开发 VPS 与 Oracle ARM 服务端。更新开发机时使用 `.#vps-dev` 并指定开发机地址，完整示例见[部署说明](docs/deployment.md#日常更新)。两台 x86_64 主机的 Xray 客户端与 Oracle 服务端均使用 `nixpkgs-unstable`；客户端需要在各自服务器上用 `proxy-on` / `proxy-off` 开关。`vps-pi` 的 pi-web 使用 `ghcr.io/agegr/pi-web:latest`，由 Podman 运行并通过 `pi.nullcode.cc` 提供 HTTPS，工作目录和数据位于 `/home/tau/pi-workspace`，环境文件由 SOPS 从 `secrets/server.env` 解密提供。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
 
-CI 默认构建当前 x86_64 检查；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
+CI 默认构建两个 x86_64 配置 `vps-pi`、`vps-dev`；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
 
 - [配置结构与基本语法](docs/architecture.md)
 - [定制配置与新增机器](docs/customization.md)
