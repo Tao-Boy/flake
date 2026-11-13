@@ -15,7 +15,7 @@ nix flake check --no-write-lock-file                          # 构建当前架�
 
 ## 服务与网络
 
-三台主机检查共用系统服务；`proxy-status` 和 Home Manager 检查适用于 `vps-pi`、`vps-dev`，`podman-pi-web.service` 仅在 `vps-pi` 上检查。`vps-dev` 不启用 pi-web、Podman、Nginx、ACME 或应用 secrets。
+三台主机检查共用系统服务；`proxy-status` 和 Home Manager 检查适用于 `vps-pi`、`vps-dev`，`podman-pi-web.service` 和 `podman-fast-note-sync.service` 仅在 `vps-pi` 上检查。`vps-dev` 不启用这些应用服务、Podman、Nginx、ACME 或应用 secrets。
 
 ```bash
 systemctl --failed
@@ -32,6 +32,7 @@ sudo nft list ruleset
 sudo fail2ban-client status sshd
 systemctl status home-manager-tau.service
 sudo systemctl status podman-pi-web.service
+sudo systemctl status podman-fast-note-sync.service
 ```
 
 修改用户名后替换 Home Manager 服务名。DHCP / RA 应提供地址、路由、DNS；服务商只支持静态配置时应主动在机器入口声明。软件防火墙与服务商防火墙须同时允许 SSH 端口。
@@ -71,5 +72,7 @@ sudo systemctl status nix-gc.timer fstrim.timer
 按仓库新布局安装后，根文件系统是硬盘上的 ext4，重启后 `/home/tau`、`/var`、`/etc/ssh` 和 `/nix` 都保留，不需要 impermanence 清单。当前本机 `lsblk` 显示 `/dev/vda` 为 60 GiB，但 `findmnt /` 仍显示 tmpfs，旧布局仍有 `/nix/persist`；它尚未迁移到新版布局。
 
 备份至少包括 `/home/tau`、`/etc/ssh/ssh_host_ed25519_key` 和 `/home/tau/.config/sops/age/keys.txt`；旧布局还需检查 `/nix/persist` 中的实际持久状态，详见[迁移说明](deployment.md#旧布局迁移到-ext4-根分区)。丢失主机密钥会改变 SSH 主机指纹，丢失 age 私钥会导致服务器无法解密仓库中的 secrets。安装命令会擦盘，已采用新布局的日常更新只运行 `nixos-rebuild`。
+
+`vps-pi` 的 Fast Note Sync 需一并备份 `/home/tau/fast-note-sync` 中的配置、认证密钥和数据库；先停止容器再复制目录，详见[服务说明](services.md#fast-note-sync-笔记同步)。
 
 按主机分别备份 `/etc/ssh`，并使用独立的 `work/vps-pi/extra-files`、`work/vps-dev/extra-files`、`work/oracle-arm/extra-files`。不同服务器不能复制使用同一 SSH 主机私钥；用户登录密钥和 age admin key 仍可共用。

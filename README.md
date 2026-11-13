@@ -4,7 +4,7 @@
 
 | 主机 | 角色 | 目标磁盘 |
 | --- | --- | --- |
-| `vps-pi` | x86_64：原 VPS 的全部服务，包括 Home Manager、Xray 客户端、pi-web、Podman 和 Nginx/ACME | `/dev/vda`（当前本机 `lsblk` 确认为 60 GiB） |
+| `vps-pi` | x86_64：Home Manager、Xray 客户端、pi-web、Fast Note Sync、Podman 和 Nginx/ACME | `/dev/vda`（当前本机 `lsblk` 确认为 60 GiB） |
 | `vps-dev` | x86_64：开发服务器，Home Manager、Xray 客户端及开发工具 | `/dev/sda` |
 | `oracle-arm` | aarch64：Xray Reality 服务端、Podman Ignis | `/dev/sda` |
 
@@ -58,6 +58,7 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 | 共用 Nginx 与 ACME 设置 | `modules/nixos/server/nginx.nix` |
 | 共用 Podman 后端与镜像存储路径 | `modules/nixos/server/podman.nix` |
 | vps-pi 的 pi-web 容器与反向代理 | `modules/nixos/server/pi-web.nix` |
+| vps-pi 的 Fast Note Sync 与 `sync.nullcode.cc` | `modules/nixos/server/fast-note-sync.nix` |
 | pi-web 环境变量（SOPS 密文） | `sops edit secrets/server.env` |
 | Oracle ARM Ignis 与 Nginx | `modules/nixos/server/ignis.nix` |
 | Xray 客户端配置 | `sops edit secrets/client.json` |
@@ -68,7 +69,7 @@ secrets/                  加密的 Xray、SSH、pi-web 与 Ignis 凭据
 
 仓库定义的安装布局是同一块磁盘上的 GPT、EFI `/boot` 分区和占满剩余空间的 ext4 `/` 分区。按此布局安装后，根目录直接使用硬盘，`/nix`、`/home`、`/var` 和日志都在这个 ext4 文件系统中持久保存，不使用根 tmpfs、`/nix/persist` 或 impermanence 清单。当前本机根 `/` 仍为 tmpfs，旧磁盘布局中仍有 `/nix/persist`；这不代表仓库新版布局已经部署。
 
-pi-web 与 Ignis 的 Podman 镜像及容器可写层统一存放在 `/var/lib/containers/storage`。pi-web 的工作目录与挂载数据位于 `/home/tau/pi-workspace`；Ignis 的笔记、插件与应用缓存位于 `/home/tau/ignis`。
+所有 Podman 服务的镜像及容器可写层统一存放在 `/var/lib/containers/storage`。pi-web 的工作目录与挂载数据位于 `/home/tau/pi-workspace`；Fast Note Sync 的配置和数据位于 `/home/tau/fast-note-sync/{config,storage}`；Ignis 的笔记、插件与应用缓存位于 `/home/tau/ignis`。
 
 `vps-pi`、`vps-dev` 和 `oracle-arm` 共用同一对用户 SSH 密钥：公钥直接写在 `modules/nixos/base/users.nix`，私钥以 SOPS 密文保存在 `secrets/id_ed25519`，激活时解密到 `/run/secrets/id_ed25519`（所有者 `tau`，权限 `0600`），并用于 `tau` 的出站 SSH。根目录的明文 `id_ed25519` 已被 Git 忽略，只用于本机导入。
 
@@ -109,6 +110,8 @@ nixos-rebuild switch --flake .#vps-pi --target-host tau@YOUR_PI_SERVER --sudo
 ```
 
 `.#vps-pi`、`.#vps-dev` 和 `.#oracle-arm` 分别选择 pi-web VPS、开发 VPS 与 Oracle ARM 服务端。更新开发机时使用 `.#vps-dev` 并指定开发机地址，完整示例见[部署说明](docs/deployment.md#日常更新)。两台 x86_64 主机的 Xray 客户端与 Oracle 服务端均使用 `nixpkgs-unstable`；客户端需要在各自服务器上用 `proxy-on` / `proxy-off` 开关。`vps-pi` 的 pi-web 使用 `ghcr.io/agegr/pi-web:latest`，由 Podman 运行并通过 `pi.nullcode.cc` 提供 HTTPS，工作目录和数据位于 `/home/tau/pi-workspace`，环境文件由 SOPS 从 `secrets/server.env` 解密提供。Oracle ARM 目前启用 Xray Reality 和 Podman Ignis，Ignis 通过 `ob.nullcode.cc` 的 HTTPS、Nginx Basic Auth 提供访问。
+
+`vps-pi` 同时提供 `https://sync.nullcode.cc`，使用官方 `docker.io/haierkeys/fast-note-sync-service:latest` 镜像运行 Fast Note Sync，通过 WebSocket 为 Obsidian 插件同步笔记。部署前将该域名解析到 `vps-pi`；首次注册、配置和备份方法见[服务说明](docs/services.md#fast-note-sync-笔记同步)。
 
 CI 默认构建两个 x86_64 配置 `vps-pi`、`vps-dev`；ARM 主机的系统和 disko 脚本可在 ARM builder 上用 `--system aarch64-linux` 验证。
 

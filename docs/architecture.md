@@ -31,6 +31,7 @@
 | `modules/nixos/server/nginx.nix` | 共用 Nginx 推荐参数、防火墙和 ACME 设置 |
 | `modules/nixos/server/podman.nix` | 共用 Podman 后端、`/var/lib/containers/storage` 镜像与可写层存储 |
 | `modules/nixos/server/pi-web.nix` | Podman pi-web、pi-workspace 挂载、SOPS 环境文件与 HTTPS 代理 |
+| `modules/nixos/server/fast-note-sync.nix` | Fast Note Sync 容器、config/storage 持久化、`sync.nullcode.cc` HTTPS 与 WebSocket |
 | `modules/nixos/server/ignis.nix` | Ignis 容器、`~/ignis` 笔记与插件目录、HTTPS 代理和认证 |
 | `home/cli/development.nix` | vps-dev 额外使用的 Python 3、pkg-config、GDB |
 | `hosts/vps-pi/disko-fs.nix` | `/dev/vda`、BIOS boot 分区和串口参数 |
