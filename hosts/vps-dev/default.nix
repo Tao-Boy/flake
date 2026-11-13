@@ -8,6 +8,8 @@
     ./disko-fs.nix
   ];
 
+  programs.nix-ld.enable = true;
+
   home-manager.users.tau = ./home.nix;
   system.stateVersion = "26.05";
 }
