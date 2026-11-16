@@ -25,7 +25,7 @@ in
   ];
 
   virtualisation.oci-containers.containers.pi-web = {
-    image = "ghcr.io/agegr/pi-web:latest";
+    image = "ghcr.io/tao-boy/pi-web:latest";
     pull = "always";
     ports = [ "${backend}:30141" ];
     user = "${uid}:${gid}";
