@@ -35,12 +35,12 @@ in
     after = [ "network.target" ];
     environment = {
       HOME = workspaceDir;
-      PATH = lib.concatStringsSep ":" [
+      PATH = lib.mkForce (lib.concatStringsSep ":" [
         npmBin
         "${npm.package}/bin"
         "${homeConfig.home.profileDirectory}/bin"
         "/run/current-system/sw/bin"
-      ];
+      ]);
       PI_CODING_AGENT_DIR = "${workspaceDir}/.pi/agent";
       PI_WEB_SKIP_VERSION_CHECK = "1";
     };
