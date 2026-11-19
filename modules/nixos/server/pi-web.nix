@@ -1,53 +1,62 @@
-{ config, ... }:
+{
+  config,
+  lib,
+  pkgs,
+  ...
+}:
 let
   domain = "pi.nullcode.cc";
-  backend = "127.0.0.1:30141";
+  host = "127.0.0.1";
+  port = "30141";
+  backend = "${host}:${port}";
   workspaceDir = "${config.users.users.tau.home}/pi-workspace";
-  uid = toString config.users.users.tau.uid;
-  gid = toString config.users.groups.users.gid;
+  homeConfig = config.home-manager.users.tau;
+  npm = homeConfig.programs.npm;
+  npmBin = "${npm.settings.prefix}/bin";
 in
 {
-  imports = [
-    ./nginx.nix
-    ./podman.nix
-  ];
+  imports = [ ./nginx.nix ];
 
   sops.secrets."pi-web.env" = {
     sopsFile = ../../../secrets/server.env;
     format = "dotenv";
     key = "";
     mode = "0400";
-    restartUnits = [ "podman-pi-web.service" ];
+    restartUnits = [ "pi-web.service" ];
   };
 
   systemd.tmpfiles.rules = [
     "d ${workspaceDir} 0700 tau users -"
   ];
 
-  virtualisation.oci-containers.containers.pi-web = {
-    image = "ghcr.io/tao-boy/pi-web:latest";
-    pull = "always";
-    ports = [ "${backend}:30141" ];
-    user = "${uid}:${gid}";
-    workdir = workspaceDir;
+  systemd.services.pi-web = {
+    description = "Pi Web";
+    wantedBy = [ "multi-user.target" ];
+    after = [ "network.target" ];
     environment = {
       HOME = workspaceDir;
+      PATH = lib.concatStringsSep ":" [
+        npmBin
+        "${npm.package}/bin"
+        "${homeConfig.home.profileDirectory}/bin"
+        "/run/current-system/sw/bin"
+      ];
       PI_CODING_AGENT_DIR = "${workspaceDir}/.pi/agent";
-      PI_WEB_ALLOWED_HOSTS = domain;
       PI_WEB_SKIP_VERSION_CHECK = "1";
     };
-    environmentFiles = [ config.sops.secrets."pi-web.env".path ];
-    volumes = [ "${workspaceDir}:${workspaceDir}" ];
-    # 入口不依赖容器工作目录。
-    cmd = [
-      "node"
-      "/app/bin/pi-web.js"
-      "--hostname"
-      "0.0.0.0"
-      "--port"
-      "30141"
-      "--no-open"
-    ];
+    serviceConfig = {
+      User = "tau";
+      Group = "users";
+      WorkingDirectory = workspaceDir;
+      EnvironmentFile = config.sops.secrets."pi-web.env".path;
+      NoNewPrivileges = true;
+      # tau 手动用 npm 全局安装 pi-web 后即可启动。
+      ExecCondition = "${pkgs.coreutils}/bin/test -f ${npmBin}/pi-web";
+      # 域名白名单以站点配置为准，覆盖环境文件中的值。
+      ExecStart = "${pkgs.coreutils}/bin/env PI_WEB_ALLOWED_HOSTS=${domain} ${npm.package}/bin/node ${npmBin}/pi-web --hostname ${host} --port ${port} --no-open";
+      Restart = "on-failure";
+      RestartSec = "5s";
+    };
   };
 
   services.nginx.virtualHosts.${domain} = {
